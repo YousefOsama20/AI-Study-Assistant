@@ -23,7 +23,7 @@ async def startup_db_client():
         app.db_engine, class_=AsyncSession, expire_on_commit=False
     )
     llm_provider_factory = LLMProviderFactory(setting)
-    vectordb_provider_factory = VectorDBProviderFactory(setting)
+    vectordb_provider_factory = VectorDBProviderFactory(config=setting, db_client=app.db_client)
 
     #generation client
     app.generation_client = llm_provider_factory.create(provider = setting.GENERATION_BACKEND)
@@ -38,7 +38,7 @@ async def startup_db_client():
     app.vectordb_client = vectordb_provider_factory.create(
         provider=setting.VECTOR_DB_BACKEND
     )
-    app.vectordb_client.connect()      
+    await app.vectordb_client.connect()      
 
     app.template_parser = TemplateParser(
         language =setting.PRIMARY_LANG,
@@ -48,7 +48,7 @@ async def startup_db_client():
 @app.on_event("shutdown")
 async def shutdown_db_client():
     app.db_engine.dispose()
-    app.vectordb_client.disconnect()
+    await app.vectordb_client.disconnect()
 
 app.include_router(base.base_router)
 app.include_router(data.data_router)
