@@ -1,5 +1,5 @@
 import os
-from models import ResponseSignal
+from models.enums.ResponseEnums import ResponseSignal
 from .BassController import BassController
 from fastapi import UploadFile
 from .projectController import projectController

@@ -9,3 +9,7 @@ PyMuPDF==1.24.3
 langchain-community==0.0.38
 motor==3.7.1
 qdrant-client==1.19.0 
+SQLAlchemy
+asyncpg
+alembic==1.14.0
+psycopg==2.9.10
