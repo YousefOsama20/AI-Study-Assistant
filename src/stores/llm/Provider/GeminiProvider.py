@@ -198,5 +198,5 @@ class GeminiProvider(LLMInterface):
 
         return {
             "role": role,
-            "text": self.process_text(prompt)
+            "text": prompt
         }
