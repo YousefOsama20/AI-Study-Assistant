@@ -24,9 +24,18 @@ export function BackendStatusChip() {
 
   return (
     <span
+      role="status"
+      aria-live="polite"
+      aria-label={label}
       className={cn(
         'inline-flex items-center gap-2 rounded-full border border-border bg-surface-2 px-2.5 py-1 text-xs font-medium',
-        health === 'ok' ? 'text-success' : health === 'unreachable' ? 'text-danger' : 'text-warning',
+        health === 'ok'
+          ? 'text-success'
+          : health === 'unreachable'
+            ? 'text-danger'
+            : health === 'degraded'
+              ? 'text-warning'
+              : 'text-muted',
       )}
       title={label}
     >

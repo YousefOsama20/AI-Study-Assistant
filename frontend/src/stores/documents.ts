@@ -172,6 +172,10 @@ export const useDocumentsStore = create<DocumentsState>()((set, get) => {
         pushToast({
           kind: 'error',
           title: messageFromError(error, 'Upload failed'),
+          action: {
+            label: 'Retry',
+            onClick: () => void get().upload(projectId, files),
+          },
         })
       }
     },
@@ -196,11 +200,16 @@ export const useDocumentsStore = create<DocumentsState>()((set, get) => {
       patchBusy(projectId, documentId, 'reprocessing')
       try {
         await api.reprocessDocument(projectId, documentId)
+        pushToast({ kind: 'success', title: 'Document reprocessed' })
         await get().load(projectId)
       } catch (error) {
         pushToast({
           kind: 'error',
           title: messageFromError(error, 'Reprocessing failed'),
+          action: {
+            label: 'Retry',
+            onClick: () => void get().reprocess(projectId, documentId),
+          },
         })
       } finally {
         patchBusy(projectId, documentId, null)
@@ -213,9 +222,17 @@ export const useDocumentsStore = create<DocumentsState>()((set, get) => {
         const response = await api.processProject(projectId)
         if (response.failed_files.length > 0) {
           pushToast({
-            kind: 'error',
-            title: `${response.failed_files.length} file(s) failed to process`,
+            kind:
+              response.processed_files > 0 ? 'warning' : 'error',
+            title:
+              response.processed_files > 0
+                ? `${response.processed_files} file(s) processed, ${response.failed_files.length} failed`
+                : `${response.failed_files.length} file(s) failed to process`,
             description: response.failed_files[0]?.error,
+            action: {
+              label: 'Retry',
+              onClick: () => void get().processAll(projectId),
+            },
           })
         } else {
           pushToast({
@@ -229,6 +246,10 @@ export const useDocumentsStore = create<DocumentsState>()((set, get) => {
         pushToast({
           kind: 'error',
           title: messageFromError(error, 'Processing failed'),
+          action: {
+            label: 'Retry',
+            onClick: () => void get().processAll(projectId),
+          },
         })
       } finally {
         updateBucket(projectId, { processing: false })
@@ -254,6 +275,10 @@ export const useDocumentsStore = create<DocumentsState>()((set, get) => {
         pushToast({
           kind: 'error',
           title: messageFromError(error, 'Index build failed'),
+          action: {
+            label: 'Retry',
+            onClick: () => void get().buildIndex(projectId, rebuild),
+          },
         })
       } finally {
         updateBucket(projectId, { indexing: false })

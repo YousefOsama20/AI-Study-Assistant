@@ -1,10 +1,10 @@
 import { useEffect } from 'react'
-import { BookOpenText } from 'lucide-react'
 import { useBackendStore } from '../stores/backend'
 import { useI18n } from '../lib/i18n'
 import { cn } from '../lib/utils'
 import { Badge } from '../components/ui/Badge'
 import { Card, CardContent } from '../components/ui/Card'
+import logoMark from '../assets/logo-mark.png'
 
 const STACK = [
   'React 18',
@@ -41,9 +41,12 @@ export function AboutPage() {
     <div className="flex justify-center py-6">
       <Card className="w-full max-w-xl">
         <CardContent className="flex flex-col items-center gap-4 px-8 py-10 text-center">
-          <div className="rounded-2xl bg-primary p-3 text-white">
-            <BookOpenText className="size-8" aria-hidden="true" />
-          </div>
+          <img
+            src={logoMark}
+            alt=""
+            className="size-20 rounded-full shadow-card"
+            decoding="async"
+          />
           <h1 className="text-xl font-semibold text-fg">{t('app.name')}</h1>
           <p className="text-sm text-muted">
             {t('about.version', { version: systemInfo?.version ?? '1.0.0' })}

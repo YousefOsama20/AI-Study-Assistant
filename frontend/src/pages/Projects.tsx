@@ -103,11 +103,13 @@ export function ProjectsPage() {
           name: trimmed,
           description: description.trim() || undefined,
         })
+        pushToast({ kind: 'success', title: t('projects.updated') })
       } else {
         await useProjectsStore.getState().create({
           name: trimmed,
           description: description.trim() || undefined,
         })
+        pushToast({ kind: 'success', title: t('projects.created') })
       }
       setModalOpen(false)
     } catch (err) {
@@ -129,6 +131,7 @@ export function ProjectsPage() {
     setDeletingBusy(true)
     try {
       await useProjectsStore.getState().remove(deleting.project_id)
+      pushToast({ kind: 'success', title: t('projects.deleted') })
       setDeleting(null)
     } catch {
       pushToast({ kind: 'error', title: t('projects.deleteFailed') })
@@ -222,7 +225,7 @@ export function ProjectsPage() {
             aria-label={t('projects.viewGrid')}
             aria-pressed={view === 'grid'}
             className={
-              view === 'grid' ? 'bg-primary-soft text-primary' : undefined
+              view === 'grid' ? 'bg-primary-soft text-primary-text' : undefined
             }
             icon={<LayoutGrid className="size-4" />}
             onClick={() => changeView('grid')}
@@ -233,7 +236,7 @@ export function ProjectsPage() {
             aria-label={t('projects.viewList')}
             aria-pressed={view === 'list'}
             className={
-              view === 'list' ? 'bg-primary-soft text-primary' : undefined
+              view === 'list' ? 'bg-primary-soft text-primary-text' : undefined
             }
             icon={<List className="size-4" />}
             onClick={() => changeView('list')}
@@ -293,7 +296,7 @@ export function ProjectsPage() {
                   <button
                     type="button"
                     onClick={() => openDocuments(project)}
-                    className="min-w-0 text-start text-base font-semibold text-fg hover:text-primary"
+                    className="min-w-0 text-start text-base font-semibold text-fg hover:text-primary-text"
                   >
                     <span className="block truncate">{project.name}</span>
                   </button>
@@ -332,7 +335,7 @@ export function ProjectsPage() {
                 <button
                   type="button"
                   onClick={() => openDocuments(project)}
-                  className="block max-w-full truncate text-start text-sm font-semibold text-fg hover:text-primary"
+                  className="block max-w-full truncate text-start text-sm font-semibold text-fg hover:text-primary-text"
                 >
                   {project.name}
                 </button>

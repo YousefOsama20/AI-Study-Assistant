@@ -42,7 +42,7 @@ function SourcePanel({
         aria-expanded={expanded}
       >
         <span className="flex items-center gap-2">
-          <BookOpenText className="size-4 text-primary" aria-hidden="true" />
+          <BookOpenText className="size-4 text-primary-text" aria-hidden="true" />
           {t('chat.sources')}
           <Badge variant="outline">{sources.length}</Badge>
         </span>
@@ -75,7 +75,7 @@ function SourcePanel({
               {source.asset_id !== null ? (
                 <button
                   type="button"
-                  className="mt-1.5 inline-flex items-center gap-1 text-xs text-primary hover:underline"
+                  className="mt-1.5 inline-flex items-center gap-1 text-xs text-primary-text hover:underline"
                   onClick={() =>
                     navigate(
                       `/projects/${projectId}/documents?preview=${source.asset_id}&page=${source.page_number ?? 1}`,
@@ -108,7 +108,7 @@ function MessageBubble({
   if (message.role === 'user') {
     return (
       <div className="flex justify-end">
-        <div className="max-w-[85%] rounded-lg rounded-ee-sm bg-primary px-4 py-2.5 text-sm text-white">
+        <div className="max-w-[85%] rounded-lg rounded-ee-sm bg-primary px-4 py-2.5 text-sm text-primary-fg">
           <p className="mb-1 text-[11px] font-medium uppercase tracking-wide opacity-70">
             {t('chat.userLabel')}
           </p>
@@ -125,7 +125,11 @@ function MessageBubble({
           <p className="mb-1 text-[11px] font-medium uppercase tracking-wide text-muted">
             {t('chat.assistantLabel')}
           </p>
-          <div className="flex items-center gap-1.5" aria-label={t('chat.sending')}>
+          <div
+            className="flex items-center gap-1.5"
+            role="status"
+            aria-label={t('chat.sending')}
+          >
             <span className="size-1.5 animate-bounce rounded-full bg-primary [animation-delay:0ms]" />
             <span className="size-1.5 animate-bounce rounded-full bg-primary [animation-delay:150ms]" />
             <span className="size-1.5 animate-bounce rounded-full bg-primary [animation-delay:300ms]" />
@@ -138,12 +142,12 @@ function MessageBubble({
   if (message.noContext) {
     return (
       <div className="flex justify-start">
-        <div className="max-w-[85%] rounded-lg rounded-ss-sm border border-warning/30 bg-warning-soft px-4 py-2.5 text-sm">
-          <p className="flex items-center gap-1.5 font-medium text-warning">
+        <div className="max-w-[85%] rounded-lg rounded-ss-sm border border-info/30 bg-info-soft px-4 py-2.5 text-sm">
+          <p className="flex items-center gap-1.5 font-medium text-info">
             <Info className="size-4" aria-hidden="true" />
             {t('chat.noContextTitle')}
           </p>
-          <p className="mt-1 text-warning/90">{t('chat.noContextBody')}</p>
+          <p className="mt-1 text-info">{t('chat.noContextBody')}</p>
         </div>
       </div>
     )
@@ -156,8 +160,11 @@ function MessageBubble({
           {t('chat.assistantLabel')}
         </p>
         {message.error ? (
-          <div className="flex flex-col gap-2">
-            <p className="flex items-start gap-1.5 text-danger">
+          <div className="flex flex-col gap-2 rounded-md border border-danger/30 bg-danger-soft p-3">
+            <p
+              role="alert"
+              className="flex items-start gap-1.5 text-danger"
+            >
               <AlertTriangle className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
               {message.content}
             </p>

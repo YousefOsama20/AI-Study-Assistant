@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import { AlertTriangle } from 'lucide-react'
 import { useBackendStore } from '../stores/backend'
 import { useSettingsStore } from '../stores/settings'
 import { pushToast } from '../stores/toasts'
@@ -68,8 +69,20 @@ export function SettingsPage() {
 
   async function handleRestart() {
     const ok = await useBackendStore.getState().restart()
-    if (!ok) {
-      pushToast({ kind: 'error', title: t('backend.restartFailed') })
+    if (ok) {
+      pushToast({
+        kind: 'success',
+        title: t('backend.restartSuccess'),
+      })
+    } else {
+      pushToast({
+        kind: 'error',
+        title: t('backend.restartFailed'),
+        action: {
+          label: t('common.retry'),
+          onClick: () => void handleRestart(),
+        },
+      })
     }
   }
 
@@ -169,7 +182,7 @@ export function SettingsPage() {
           <CardTitle>{t('settings.backendSection')}</CardTitle>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2" role="status">
             <span
               className={cn(
                 'size-2 rounded-full',
@@ -298,8 +311,11 @@ export function SettingsPage() {
       ) : null}
 
       {systemInfoError ? (
-        <div className="flex flex-wrap items-center gap-3">
-          <p className="text-sm text-danger">{systemInfoError}</p>
+        <div className="flex flex-wrap items-center gap-3" role="alert">
+          <p className="flex items-center gap-2 text-sm text-danger">
+            <AlertTriangle className="size-4 shrink-0" aria-hidden="true" />
+            {systemInfoError}
+          </p>
           <Button
             variant="outline"
             size="sm"

@@ -487,7 +487,7 @@ function createWindow(manager: BackendManager): BrowserWindow {
     minWidth: 960,
     minHeight: 600,
     show: false,
-    backgroundColor: '#f4f2ee',
+    backgroundColor: '#F8F4EC',
     autoHideMenuBar: true,
     webPreferences: {
       ...SECURE_WEB_PREFERENCES,

@@ -9,6 +9,7 @@ import {
   Upload,
   ArrowRight,
   Inbox,
+  AlertTriangle,
 } from 'lucide-react'
 import { useDashboardStore } from '../stores/dashboard'
 import { useSettingsStore } from '../stores/settings'
@@ -48,7 +49,7 @@ function StatCard({
               ? 'rounded-lg bg-success-soft p-3 text-success'
               : tone === 'danger'
                 ? 'rounded-lg bg-danger-soft p-3 text-danger'
-                : 'rounded-lg bg-primary-soft p-3 text-primary'
+                : 'rounded-lg bg-primary-soft p-3 text-primary-text'
           }
         >
           <Icon className="size-5" aria-hidden="true" />
@@ -117,8 +118,14 @@ export function DashboardPage() {
 
       {error ? (
         <Card className="border-danger/30">
-          <CardContent className="flex items-center justify-between gap-3">
-            <p className="text-sm text-danger">{error}</p>
+          <CardContent
+            role="alert"
+            className="flex items-center justify-between gap-3"
+          >
+            <p className="flex items-center gap-2 text-sm text-danger">
+              <AlertTriangle className="size-4 shrink-0" aria-hidden="true" />
+              {error}
+            </p>
             <Button variant="outline" size="sm" onClick={() => void load()}>
               {t('common.retry')}
             </Button>
@@ -180,7 +187,7 @@ export function DashboardPage() {
                   <CardDescription>
                     <Link
                       to="/projects"
-                      className="inline-flex items-center gap-1 text-primary hover:underline"
+                      className="inline-flex items-center gap-1 text-primary-text hover:underline"
                     >
                       {t('dashboard.viewAllProjects')}
                       <ArrowRight className="size-3 rtl:rotate-180" aria-hidden="true" />

@@ -6,11 +6,11 @@ import {
   Info,
   PanelLeftClose,
   PanelLeftOpen,
-  BookOpenText,
 } from 'lucide-react'
 import { useSettingsStore } from '../../stores/settings'
 import { useI18n } from '../../lib/i18n'
 import { cn } from '../../lib/utils'
+import logoMark from '../../assets/logo-mark.png'
 
 const mainLinks = [
   { to: '/', labelKey: 'nav.dashboard', icon: LayoutDashboard, end: true },
@@ -42,18 +42,24 @@ export function Sidebar() {
         )}
       >
         {!collapsed ? (
-          <div className="flex items-center gap-2 overflow-hidden">
-            <span className="flex size-8 shrink-0 items-center justify-center rounded-md bg-primary text-white">
-              <BookOpenText className="size-4" aria-hidden="true" />
-            </span>
-            <span className="truncate text-sm font-semibold text-fg">
+          <div className="flex min-w-0 items-center gap-2">
+            <img
+              src={logoMark}
+              alt=""
+              className="size-8 shrink-0 rounded-full"
+              decoding="async"
+            />
+            <span className="min-w-0 text-xs font-semibold leading-tight text-fg">
               {t('app.name')}
             </span>
           </div>
         ) : (
-          <span className="flex size-8 items-center justify-center rounded-md bg-primary text-white">
-            <BookOpenText className="size-4" aria-hidden="true" />
-          </span>
+          <img
+            src={logoMark}
+            alt={t('app.name')}
+            className="size-8 shrink-0 rounded-full"
+            decoding="async"
+          />
         )}
         <button
           type="button"
@@ -84,7 +90,7 @@ export function Sidebar() {
                   isBottom && 'mt-auto',
                   index === mainLinks.length && 'mt-auto',
                   isActive
-                    ? 'bg-primary-soft text-primary'
+                    ? 'bg-primary-soft text-primary-text'
                     : 'text-muted hover:bg-surface-2 hover:text-fg',
                   collapsed && 'justify-center px-0',
                 )
@@ -118,7 +124,7 @@ export function MobileNav() {
             className={({ isActive }) =>
               cn(
                 'flex flex-1 flex-col items-center gap-0.5 py-2 text-[11px] font-medium',
-                isActive ? 'text-primary' : 'text-muted',
+                isActive ? 'text-primary-text' : 'text-muted',
               )
             }
           >

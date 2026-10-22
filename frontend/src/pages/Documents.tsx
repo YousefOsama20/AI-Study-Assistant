@@ -141,7 +141,7 @@ export function DocumentsPage() {
           file.name.toLowerCase().endsWith('.pdf')
         if (!isPdf || !allowedTypes.includes('application/pdf')) {
           pushToast({
-            kind: 'error',
+            kind: 'warning',
             title: t('documents.invalidType'),
             description: file.name,
           })
@@ -176,6 +176,12 @@ export function DocumentsPage() {
       setBusyDocId(document.document_id)
       try {
         await api.processProject(projectId, { fileId: document.stored_filename })
+        pushToast({
+          kind: 'success',
+          title: t('documents.processedFile', {
+            name: document.original_filename,
+          }),
+        })
         await load(projectId)
       } catch (err) {
         pushToast({
@@ -285,7 +291,7 @@ export function DocumentsPage() {
         )}
       >
         <UploadCloud
-          className={cn('size-8', dragActive ? 'text-primary' : 'text-muted')}
+          className={cn('size-8', dragActive ? 'text-primary-text' : 'text-muted')}
           aria-hidden="true"
         />
         <p className="text-sm font-medium text-fg">
@@ -309,13 +315,24 @@ export function DocumentsPage() {
         />
         {uploading ? (
           <div className="w-full max-w-xs" data-testid="upload-progress">
-            <div className="h-1.5 overflow-hidden rounded-full bg-border">
+            <div
+              role="progressbar"
+              aria-label={t('documents.upload')}
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuenow={
+                uploadProgress === null
+                  ? undefined
+                  : Math.round(uploadProgress)
+              }
+              className="h-1.5 overflow-hidden rounded-full bg-border"
+            >
               <div
                 className="h-full bg-primary transition-all"
                 style={{ width: `${Math.round(uploadProgress ?? 0)}%` }}
               />
             </div>
-            <span className="mt-1 block text-xs text-primary">
+            <span className="mt-1 block text-xs text-primary-text">
               {uploadProgress === null
                 ? t('common.loading')
                 : `${Math.round(uploadProgress)}%`}
@@ -333,7 +350,7 @@ export function DocumentsPage() {
             <AlertTriangle className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
             <div>
               <p className="font-medium">{t('documents.indexStaleTitle')}</p>
-              <p className="text-xs opacity-90">{t('documents.indexStaleBody')}</p>
+              <p className="text-xs">{t('documents.indexStaleBody')}</p>
             </div>
           </div>
           <Button
@@ -357,8 +374,14 @@ export function DocumentsPage() {
 
       {error ? (
         <Card className="border-danger/30">
-          <CardContent className="flex items-center justify-between gap-3">
-            <p className="text-sm text-danger">{error}</p>
+          <CardContent
+            role="alert"
+            className="flex items-center justify-between gap-3"
+          >
+            <p className="flex items-center gap-2 text-sm text-danger">
+              <AlertTriangle className="size-4 shrink-0" aria-hidden="true" />
+              {error}
+            </p>
             <Button variant="outline" size="sm" onClick={() => void load(projectId)}>
               {t('common.retry')}
             </Button>
@@ -421,7 +444,7 @@ export function DocumentsPage() {
                   </div>
                   <DocumentStatusBadge status={doc.status} />
                   {docBusy ? (
-                    <RefreshCw className="size-4 animate-spin text-primary" aria-hidden="true" />
+                    <RefreshCw className="size-4 animate-spin text-primary-text" aria-hidden="true" />
                   ) : null}
                   <DropdownMenu
                     trigger={

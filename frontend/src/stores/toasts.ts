@@ -1,12 +1,18 @@
 import { create } from 'zustand'
 
-export type ToastKind = 'success' | 'error' | 'info'
+export type ToastKind = 'success' | 'error' | 'warning' | 'info'
+
+export interface ToastAction {
+  label: string
+  onClick: () => void
+}
 
 export interface ToastItem {
   id: string
   kind: ToastKind
   title: string
   description?: string
+  action?: ToastAction
 }
 
 interface ToastsState {
@@ -17,6 +23,13 @@ interface ToastsState {
 
 let toastCounter = 0
 
+const TOAST_DURATION_MS: Record<ToastKind, number> = {
+  success: 4500,
+  info: 4500,
+  warning: 6500,
+  error: 8000,
+}
+
 export const useToastsStore = create<ToastsState>()((set) => ({
   toasts: [],
   push: (toast) => {
@@ -25,7 +38,7 @@ export const useToastsStore = create<ToastsState>()((set) => ({
     set((s) => ({ toasts: [...s.toasts, { ...toast, id }] }))
     window.setTimeout(() => {
       set((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) }))
-    }, toast.kind === 'error' ? 8000 : 4500)
+    }, TOAST_DURATION_MS[toast.kind])
   },
   dismiss: (id) =>
     set((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) })),

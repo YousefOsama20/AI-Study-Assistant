@@ -1,6 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { Search as SearchIcon, Layers, FileText, ArrowRight } from 'lucide-react'
+import {
+  Search as SearchIcon,
+  Layers,
+  FileText,
+  ArrowRight,
+  AlertTriangle,
+} from 'lucide-react'
 import { useSearchStore } from '../stores/search'
 import { useSettingsStore } from '../stores/settings'
 import { useI18n } from '../lib/i18n'
@@ -143,8 +149,14 @@ export function SearchPage() {
         />
       ) : error ? (
         <Card className="border-danger/30">
-          <CardContent className="flex items-center justify-between gap-3">
-            <p className="text-sm text-danger">{error}</p>
+          <CardContent
+            role="alert"
+            className="flex items-center justify-between gap-3"
+          >
+            <p className="flex items-center gap-2 text-sm text-danger">
+              <AlertTriangle className="size-4 shrink-0" aria-hidden="true" />
+              {error}
+            </p>
             <Button variant="outline" size="sm" onClick={() => void submit()}>
               {t('common.retry')}
             </Button>
@@ -194,7 +206,7 @@ export function SearchPage() {
                     className={cn(
                       'text-xs font-medium tabular-nums',
                       result.score >= 0.7
-                        ? 'text-success'
+                        ? 'text-info'
                         : result.score >= 0.4
                           ? 'text-warning'
                           : 'text-muted',

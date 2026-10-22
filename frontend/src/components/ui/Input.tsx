@@ -4,6 +4,7 @@ import {
   type InputHTMLAttributes,
   type TextareaHTMLAttributes,
 } from 'react'
+import { AlertCircle } from 'lucide-react'
 import { cn } from '../../lib/utils'
 
 export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
@@ -16,13 +17,18 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
   ({ className, label, error, hint, id, ...rest }, ref) => {
     const autoId = useId()
     const inputId = id ?? autoId
+    const hintId = `${inputId}-hint`
+    const errorId = `${inputId}-error`
+    const describedBy = error
+      ? errorId
+      : hint
+        ? hintId
+        : undefined
+
     return (
       <div className="flex flex-col gap-1.5">
         {label ? (
-          <label
-            htmlFor={inputId}
-            className="text-sm font-medium text-fg"
-          >
+          <label htmlFor={inputId} className="text-sm font-medium text-fg">
             {label}
           </label>
         ) : null}
@@ -30,6 +36,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
           ref={ref}
           id={inputId}
           aria-invalid={Boolean(error) || undefined}
+          aria-describedby={describedBy}
           className={cn(
             'h-10 w-full rounded-md border border-border bg-surface px-3 text-sm text-fg',
             'placeholder:text-muted/70',
@@ -40,9 +47,20 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
           {...rest}
         />
         {hint && !error ? (
-          <p className="text-xs text-muted">{hint}</p>
+          <p id={hintId} className="text-xs text-muted">
+            {hint}
+          </p>
         ) : null}
-        {error ? <p className="text-xs text-danger">{error}</p> : null}
+        {error ? (
+          <p
+            id={errorId}
+            role="alert"
+            className="flex items-center gap-1 text-xs text-danger"
+          >
+            <AlertCircle className="size-3.5 shrink-0" aria-hidden="true" />
+            {error}
+          </p>
+        ) : null}
       </div>
     )
   },
@@ -59,6 +77,8 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
   ({ className, label, error, id, ...rest }, ref) => {
     const autoId = useId()
     const inputId = id ?? autoId
+    const errorId = `${inputId}-error`
+
     return (
       <div className="flex flex-col gap-1.5">
         {label ? (
@@ -70,6 +90,7 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
           ref={ref}
           id={inputId}
           aria-invalid={Boolean(error) || undefined}
+          aria-describedby={error ? errorId : undefined}
           className={cn(
             'min-h-20 w-full rounded-md border border-border bg-surface px-3 py-2 text-sm text-fg',
             'placeholder:text-muted/70',
@@ -79,7 +100,16 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
           )}
           {...rest}
         />
-        {error ? <p className="text-xs text-danger">{error}</p> : null}
+        {error ? (
+          <p
+            id={errorId}
+            role="alert"
+            className="flex items-center gap-1 text-xs text-danger"
+          >
+            <AlertCircle className="size-3.5 shrink-0" aria-hidden="true" />
+            {error}
+          </p>
+        ) : null}
       </div>
     )
   },

@@ -25,7 +25,7 @@ export function Switch({
           disabled:opacity-50"
       >
         <SwitchPrimitive.Thumb
-          className="block size-5 translate-x-0.5 rounded-full bg-white shadow transition-transform
+          className="block size-5 translate-x-0.5 rounded-full bg-control-thumb shadow transition-transform
             data-[state=checked]:translate-x-5"
         />
       </SwitchPrimitive.Root>

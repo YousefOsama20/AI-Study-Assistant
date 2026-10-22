@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
@@ -52,6 +52,8 @@ describe('language and theme preferences', () => {
   afterEach(() => {
     useSettingsStore.setState({ language: 'en', theme: 'light' })
     document.documentElement.classList.remove('dark')
+    delete document.documentElement.dataset.theme
+    document.documentElement.style.colorScheme = ''
   })
 
   it('switches to Arabic and applies RTL', () => {
@@ -74,10 +76,36 @@ describe('language and theme preferences', () => {
     render(<ThemeProbe />)
 
     expect(document.documentElement.classList.contains('dark')).toBe(true)
+    expect(document.documentElement.dataset.theme).toBe('dark')
+    expect(document.documentElement.style.colorScheme).toBe('dark')
 
     const persisted = JSON.parse(
       window.localStorage.getItem('minirag-settings') ?? '{}',
     ) as { state?: { theme?: string } }
     expect(persisted.state?.theme).toBe('dark')
+  })
+
+  it('resolves the system theme through prefers-color-scheme', () => {
+    const originalMatchMedia = window.matchMedia
+    window.matchMedia = vi.fn().mockImplementation((query: string) => ({
+      matches: query.includes('prefers-color-scheme: dark'),
+      media: query,
+      onchange: null,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    })) as unknown as typeof window.matchMedia
+
+    try {
+      useSettingsStore.setState({ theme: 'system' })
+      render(<ThemeProbe />)
+
+      expect(document.documentElement.dataset.theme).toBe('dark')
+      expect(document.documentElement.classList.contains('dark')).toBe(true)
+    } finally {
+      window.matchMedia = originalMatchMedia
+    }
   })
 })

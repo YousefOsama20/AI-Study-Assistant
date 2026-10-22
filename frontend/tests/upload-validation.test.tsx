@@ -86,15 +86,16 @@ describe('upload validation', () => {
     return screen.getByTestId('pdf-upload-input') as HTMLInputElement
   }
 
-  it('rejects non-PDF files with an error toast', async () => {
+  it('rejects non-PDF files with a warning toast', async () => {
     renderAt(<DocumentsPage />, '/projects/7/documents', '/projects/:projectId/documents')
 
     const textFile = new File(['hello'], 'notes.txt', { type: 'text/plain' })
     fireEvent.change(fileInput(), { target: { files: [textFile] } })
 
     await waitFor(() => {
-      const titles = useToastsStore.getState().toasts.map((toast) => toast.title)
-      expect(titles.some((title) => /pdf/i.test(title))).toBe(true)
+      const toasts = useToastsStore.getState().toasts
+      expect(toasts.some((toast) => /pdf/i.test(toast.title))).toBe(true)
+      expect(toasts.some((toast) => toast.kind === 'warning')).toBe(true)
     })
     expect(uploadMock.uploadProjectFiles).not.toHaveBeenCalled()
   })
@@ -112,7 +113,10 @@ describe('upload validation', () => {
       const toasts = useToastsStore.getState().toasts
       expect(
         toasts.some(
-          (toast) => toast.title.includes('big.pdf') || /10/.test(toast.description ?? ''),
+          (toast) =>
+            (toast.title.includes('big.pdf') ||
+              /10/.test(toast.description ?? '')) &&
+            toast.kind === 'error',
         ),
       ).toBe(true)
     })

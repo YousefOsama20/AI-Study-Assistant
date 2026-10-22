@@ -1,13 +1,37 @@
 import { useEffect } from 'react'
 import { useSettingsStore, type ThemePreference } from '../stores/settings'
 
-function resolveTheme(preference: ThemePreference): 'light' | 'dark' {
+export const THEME_COLORS = {
+  light: '#F8F4EC',
+  dark: '#211B1A',
+} as const
+
+export function resolveTheme(
+  preference: ThemePreference,
+): 'light' | 'dark' {
   if (preference === 'system') {
     return window.matchMedia('(prefers-color-scheme: dark)').matches
       ? 'dark'
       : 'light'
   }
   return preference
+}
+
+export function applyTheme(preference: ThemePreference): 'light' | 'dark' {
+  const resolved = resolveTheme(preference)
+  const root = document.documentElement
+  root.classList.toggle('dark', resolved === 'dark')
+  root.dataset.theme = resolved
+  root.style.colorScheme = resolved
+
+  const themeColor = document.querySelector<HTMLMetaElement>(
+    'meta[name="theme-color"]',
+  )
+  if (themeColor) {
+    themeColor.content = THEME_COLORS[resolved]
+  }
+
+  return resolved
 }
 
 export function useTheme(): void {
@@ -17,8 +41,7 @@ export function useTheme(): void {
 
   useEffect(() => {
     const apply = () => {
-      const resolved = resolveTheme(theme)
-      document.documentElement.classList.toggle('dark', resolved === 'dark')
+      applyTheme(theme)
     }
     apply()
     if (theme !== 'system') return

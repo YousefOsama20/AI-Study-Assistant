@@ -2,54 +2,73 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  /* Light theme — warm neutral surfaces, brand #BE5103 / #FFCE1B / #069494 / #B7410E */
-  --bg: 248 247 244;
-  --surface: 255 255 255;
-  --surface-2: 244 242 238;
-  --border: 226 221 213;
-  --fg: 34 30 27;
-  --muted: 112 104 95;
-  --primary: 190 81 3; /* #BE5103 */
-  --primary-hover: 164 69 2;
-  --primary-soft: 253 236 224;
-  --accent: 255 206 27; /* #FFCE1B */
-  --teal: 6 148 148; /* #069494 */
-  --sienna: 183 65 14; /* #B7410E */
-  --danger: 185 40 40;
-  --danger-soft: 253 232 232;
-  --success: 22 130 74;
-  --success-soft: 227 245 235;
-  --warning: 166 116 18;
-  --warning-soft: 252 243 222;
-  --info: 29 100 150;
-  --info-soft: 228 240 250;
+/*
+ * Brand palette
+ * Cosmic Latte #B7A89A · Mocha Cream #E8DCC6 · Deep Burgundy #722F37
+ *
+ * Tokens are stored as space-separated RGB channels so Tailwind opacity
+ * modifiers (for example bg-surface/90) keep working.
+ */
+:root,
+[data-theme="light"] {
   color-scheme: light;
+
+  --bg: 248 244 236; /* #F8F4EC */
+  --surface: 255 255 255; /* #FFFFFF */
+  --surface-secondary: 232 220 198; /* #E8DCC6 */
+  --primary: 114 47 55; /* #722F37 */
+  --primary-hover: 92 36 44; /* #5C242C */
+  --primary-soft: 243 231 232; /* #F3E7E8 */
+  --primary-text: 114 47 55; /* #722F37 */
+  --on-primary: 255 255 255; /* #FFFFFF */
+  --text: 43 26 23; /* #2B1A17 */
+  --text-secondary: 101 86 78; /* #65564E */
+  --border: 214 199 181; /* #D6C7B5 */
+
+  --success: 35 122 69; /* #237A45 */
+  --success-bg: 232 245 236; /* #E8F5EC */
+  --error: 180 35 50; /* #B42332 */
+  --error-bg: 253 235 236; /* #FDEBEC */
+  --warning: 148 98 0; /* #946200 */
+  --warning-bg: 255 243 214; /* #FFF3D6 */
+  --info: 36 94 168; /* #245EA8 */
+  --info-bg: 234 242 255; /* #EAF2FF */
+
+  --on-error: 255 255 255; /* #FFFFFF */
+  --accent: 183 168 154; /* #B7A89A */
+  --overlay: 0 0 0; /* #000000 */
+  --control-thumb: 255 255 255; /* #FFFFFF */
 }
 
+[data-theme="dark"],
 .dark {
-  /* Dark theme */
-  --bg: 24 22 20;
-  --surface: 35 32 29;
-  --surface-2: 46 42 38;
-  --border: 66 60 54;
-  --fg: 243 240 236;
-  --muted: 168 159 149;
-  --primary: 226 116 40;
-  --primary-hover: 240 138 66;
-  --primary-soft: 62 38 22;
-  --accent: 255 206 27;
-  --teal: 32 168 168;
-  --sienna: 206 88 32;
-  --danger: 226 92 92;
-  --danger-soft: 66 32 32;
-  --success: 74 180 120;
-  --success-soft: 28 56 40;
-  --warning: 206 160 60;
-  --warning-soft: 60 50 28;
-  --info: 92 158 210;
-  --info-soft: 30 46 62;
   color-scheme: dark;
+
+  --bg: 33 27 26; /* #211B1A */
+  --surface: 48 39 37; /* #302725 */
+  --surface-secondary: 74 57 53; /* #4A3935 */
+  --primary: 168 92 100; /* #A85C64 */
+  --primary-hover: 189 116 123; /* #BD747B */
+  --primary-soft: 59 42 44; /* #3B2A2C */
+  --primary-text: 212 154 160; /* #D49AA0 */
+  --on-primary: 255 255 255; /* #FFFFFF */
+  --text: 248 244 236; /* #F8F4EC */
+  --text-secondary: 199 184 173; /* #C7B8AD */
+  --border: 81 65 60; /* #51413C */
+
+  --success: 101 209 138; /* #65D18A */
+  --success-bg: 25 58 41; /* #193A29 */
+  --error: 255 119 119; /* #FF7777 */
+  --error-bg: 71 35 38; /* #472326 */
+  --warning: 244 198 106; /* #F4C66A */
+  --warning-bg: 67 53 29; /* #43351D */
+  --info: 130 180 255; /* #82B4FF */
+  --info-bg: 32 52 81; /* #203451 */
+
+  --on-error: 33 27 26; /* #211B1A */
+  --accent: 183 168 154; /* #B7A89A */
+  --overlay: 0 0 0; /* #000000 */
+  --control-thumb: 248 244 236; /* #F8F4EC */
 }
 
 @layer base {
@@ -59,6 +78,11 @@
 
   body {
     @apply bg-bg text-fg font-sans;
+  }
+
+  ::selection {
+    background-color: rgb(var(--accent) / 0.35);
+    color: rgb(var(--text));
   }
 
   /* RTL-aware focus rings */

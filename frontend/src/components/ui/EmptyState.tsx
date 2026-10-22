@@ -19,7 +19,7 @@ export function EmptyState({
       className={`flex flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-border bg-surface px-6 py-12 text-center ${className ?? ''}`}
     >
       {Icon ? (
-        <div className="rounded-full bg-primary-soft p-3 text-primary">
+        <div className="rounded-full bg-primary-soft p-3 text-primary-text">
           <Icon className="size-6" aria-hidden="true" />
         </div>
       ) : null}

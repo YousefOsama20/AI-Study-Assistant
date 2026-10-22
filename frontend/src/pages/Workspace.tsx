@@ -6,6 +6,7 @@ import {
   Pencil,
   Search as SearchIcon,
   Files,
+  AlertTriangle,
 } from 'lucide-react'
 import { api } from '../lib/api/client'
 import { isActiveProcessingStatus, type Project } from '../types/api'
@@ -146,6 +147,7 @@ export function WorkspacePage() {
       })
       setProject(response.project)
       touchProject(response.project.project_id, response.project.name)
+      pushToast({ kind: 'success', title: t('projects.updated') })
       setEditOpen(false)
     } catch {
       pushToast({ kind: 'error', title: t('projects.updateFailed') })
@@ -182,8 +184,14 @@ export function WorkspacePage() {
           <Skeleton className="h-4 w-96 max-w-full" />
         </div>
       ) : error || !project ? (
-        <div className="rounded-lg border border-danger/30 bg-danger-soft px-4 py-3 text-sm text-danger">
-          {error ?? t('errors.notFound')}
+        <div
+          role="alert"
+          className="rounded-lg border border-danger/30 bg-danger-soft px-4 py-3 text-sm text-danger"
+        >
+          <p className="flex items-center gap-2">
+            <AlertTriangle className="size-4 shrink-0" aria-hidden="true" />
+            {error ?? t('errors.notFound')}
+          </p>
           <div className="mt-2">
             <Button variant="outline" size="sm" onClick={() => void loadProject()}>
               {t('common.retry')}
@@ -231,7 +239,7 @@ export function WorkspacePage() {
                       cn(
                         'flex items-center gap-2 border-b-2 px-4 py-2.5 text-sm font-medium transition-colors',
                         isActive
-                          ? 'border-primary text-primary'
+                          ? 'border-primary text-primary-text'
                           : 'border-transparent text-muted hover:text-fg',
                       )
                     }
