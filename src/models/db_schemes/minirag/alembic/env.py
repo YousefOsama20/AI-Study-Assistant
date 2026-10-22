@@ -1,10 +1,23 @@
 from logging.config import fileConfig
+import os
+import sys
+from pathlib import Path
+
+from alembic import context
+
+# Make both the `schemes` package (this directory's parent) and the
+# application `src` package importable regardless of the current working dir.
+# This must happen before importing `schemes`.
+_HERE = Path(__file__).resolve()
+_MINIRAG_DIR = _HERE.parents[1]
+_SRC_DIR = _HERE.parents[4]
+for _p in (str(_SRC_DIR), str(_MINIRAG_DIR)):
+    if _p not in sys.path:
+        sys.path.insert(0, _p)
 
 from sqlalchemy import engine_from_config
 from sqlalchemy import pool
 from schemes import SQLAlchemyBase
-
-from alembic import context
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
@@ -15,16 +28,44 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
+# Load src/.env so POSTGRES_* values are available when running the CLI
+# from any working directory.
+try:
+    from dotenv import load_dotenv
+    load_dotenv(_SRC_DIR / ".env")
+except Exception:
+    pass
+
+
+def _database_url() -> str:
+    """Build the database URL from environment settings.
+
+    Precedence:
+      1. ALEMBIC_DATABASE_URL / DATABASE_URL explicit override
+      2. POSTGRES_* variables (application settings)
+      3. Empty fallback (offline mode only)
+    """
+    explicit = os.environ.get("ALEMBIC_DATABASE_URL") or os.environ.get("DATABASE_URL")
+    if explicit:
+        return explicit
+
+    username = os.environ.get("POSTGRES_USERNAME", "")
+    password = os.environ.get("POSTGRES_PASSWORD", "")
+    host = os.environ.get("POSTGRES_HOST", "localhost")
+    port = os.environ.get("POSTGRES_PORT", "5432")
+    database = os.environ.get("POSTGRES_MAIN_DATABASE", "minirag")
+
+    return f"postgresql+psycopg2://{username}:{password}@{host}:{port}/{database}"
+
+
+# Always override the hardcoded URL from alembic.ini with environment settings.
+config.set_main_option("sqlalchemy.url", _database_url().replace("%", "%%"))
+
 # add your model's MetaData object here
 # for 'autogenerate' support
 # from myapp import mymodel
 # target_metadata = mymodel.Base.metadata
 target_metadata = SQLAlchemyBase.metadata
-
-# other values from the config, defined by the needs of env.py,
-# can be acquired:
-# my_important_option = config.get_main_option("my_important_option")
-# ... etc.
 
 
 def run_migrations_offline() -> None:
