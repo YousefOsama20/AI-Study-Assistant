@@ -85,8 +85,13 @@ class GeminiProvider(LLMInterface):
 
         for message in chat_history:
 
-            role = message["role"]
-            text = message["text"]
+            role = message.get("role", "")
+            text = message.get("text")
+            if text is None:
+                text = message.get("message")
+            if text is None:
+                text = message.get("content", "")
+            text = text if isinstance(text, str) else str(text)
 
             # Gemini does NOT accept "system"
             if role == GeminiEnums.SYSTEM.value:
@@ -127,7 +132,7 @@ class GeminiProvider(LLMInterface):
                 role=GeminiEnums.USER.value,
                 parts=[
                     types.Part.from_text(
-                        text=self.process_text(prompt)
+                        text=prompt
                     )
                 ]
             )

@@ -53,11 +53,38 @@ class CoHereProvider(LLMInterface):
         max_output_tokens = max_output_tokens if max_output_tokens else self.default_generation_max_output_tokens
         temperature = temperature if temperature else self.default_generation_temperature
 
+        # Normalize history: extract system prompts into `preamble`,
+        # map roles to Cohere roles and use the `message` key the SDK expects.
+        preamble_parts = []
+        normalized_history = []
+        for message in (chat_history or []):
+            raw_role = str(message.get("role", "")).upper()
+            text = message.get("message")
+            if text is None:
+                text = message.get("text")
+            if text is None:
+                text = message.get("content", "")
+            text = text if isinstance(text, str) else str(text)
+
+            if raw_role in (CohereEnums.SYSTEM.value, "SYSTEM"):
+                if text.strip():
+                    preamble_parts.append(text.strip())
+                continue
+
+            role = CohereEnums.ASSISTANT.value if raw_role in (
+                CohereEnums.ASSISTANT.value, "ASSISTANT", "CHATBOT"
+            ) else CohereEnums.USER.value
+
+            normalized_history.append({"role": role, "message": text})
+
+        preamble = "\n\n".join(preamble_parts) if preamble_parts else None
+
         try:
             response = self.client.chat(
                 model=self.generation_model_id,
-                chat_history=chat_history if chat_history else None,
-                message=self.process_text(prompt),
+                chat_history=normalized_history if normalized_history else None,
+                preamble=preamble,
+                message=prompt,
                 max_tokens=max_output_tokens,
                 temperature=temperature
             )
@@ -103,6 +130,6 @@ class CoHereProvider(LLMInterface):
     def construct_prompt(self, prompt: str, role: str):
         return {
             "role": role,
-            "text": prompt
+            "message": prompt
         }
     
