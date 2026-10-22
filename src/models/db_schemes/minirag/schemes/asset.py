@@ -1,5 +1,5 @@
 from .minirag_base import SQLAlchemyBase
-from sqlalchemy import Column, Integer, DateTime, func, String, ForeignKey
+from sqlalchemy import Column, Integer, DateTime, func, String, ForeignKey, Text
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import relationship
 from sqlalchemy import Index
@@ -19,6 +19,13 @@ class Asset(SQLAlchemyBase):
 
     asset_project_id = Column(Integer, ForeignKey("projects.project_id"), nullable=False)
 
+    original_filename = Column(String(512), nullable=False)
+    status = Column(String(50), nullable=False, default="uploaded")
+    error_message = Column(Text, nullable=True)
+    page_count = Column(Integer, nullable=True)
+    content_hash = Column(String(64), nullable=True)
+    preview_image_count = Column(Integer, nullable=False, default=0)
+
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(DateTime(timezone=True), onupdate=func.now(), nullable=True)
 
@@ -28,5 +35,7 @@ class Asset(SQLAlchemyBase):
     __table_args__ = (
         Index('ix_asset_project_id', asset_project_id),
         Index('ix_asset_type', asset_type),
+        Index('ix_asset_status', status),
+        Index('ix_asset_content_hash', content_hash),
     )
 

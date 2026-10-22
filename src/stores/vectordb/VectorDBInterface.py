@@ -47,3 +47,7 @@ class VectorDBInterface(ABC):
     @abstractmethod
     def search_by_vector(self, collection_name: str, vector: list, limit: int) -> List[RetrievedDocument] :
         pass
+
+    async def delete_records_by_ids(self, collection_name: str, record_ids: List[int]):
+        """Delete vectors by their record (chunk) IDs. Returns True when done."""
+        raise NotImplementedError

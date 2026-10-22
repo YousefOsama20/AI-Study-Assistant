@@ -1,10 +1,12 @@
-from fastapi import FastAPI, APIRouter, status, Request
+from fastapi import APIRouter, status, Request
 from fastapi.responses import JSONResponse
-from routes.schemes.nlp import PushRequest, SearchRequest
+from routes.schemes.nlp import PushRequest, SearchRequest, AnswerRequest
 from models.ProjectModels import ProjectModel
 from models.ChunkModel import ChunkModel
+from models.AssetModel import AssetModel
 from controllers import NLPController
 from models import ResponseSignal
+from models.enums.AssetTypeEnum import AssetTypeEnum
 from tqdm.auto import tqdm
 
 import logging
@@ -17,39 +19,42 @@ nlp_router = APIRouter(
 )
 
 @nlp_router.post("/index/push/{project_id}")
-async def index_project(request: Request, project_id: int, puch_request:PushRequest):
+async def index_project(request: Request, project_id: int, push_request: PushRequest):
     
     project_model = await ProjectModel.create_instance(
-        db_client = request.app.db_client
+        db_client=request.app.db_client
     )
 
     chunk_model = await ChunkModel.create_instance(
-        db_client = request.app.db_client
+        db_client=request.app.db_client
+    )
+    
+    asset_model = await AssetModel.create_instance(
+        db_client=request.app.db_client
     )
 
     project = await project_model.get_project_or_create_one(
-        project_id = project_id
+        project_id=project_id
     )
 
     if not project:
         return JSONResponse(
             status_code=status.HTTP_400_BAD_REQUEST,
             content={
-                "signal" : ResponseSignal.PROJECT_NOT_FOUND.value
+                "signal": ResponseSignal.PROJECT_NOT_FOUND.value
             }
         )
 
     nlp_controller = NLPController(
-        vectordb_client = request.app.vectordb_client,
-        embedding_client = request.app.embedding_client,
-        generation_client = request.app.generation_client,
-        template_parser = request.app.template_parser,
+        vectordb_client=request.app.vectordb_client,
+        embedding_client=request.app.embedding_client,
+        generation_client=request.app.generation_client,
+        template_parser=request.app.template_parser,
     )
 
-    has_records =True
+    has_records = True
     page_no = 1
     inserted_items_count = 0
-    idx = 0
 
     # create collection if not exists
     collection_name = nlp_controller.create_collection_name(project_id=project.project_id)
@@ -57,15 +62,23 @@ async def index_project(request: Request, project_id: int, puch_request:PushRequ
     _ = await request.app.vectordb_client.create_collection(
         collection_name=collection_name,
         embedding_size=request.app.embedding_client.embedding_size,
-        do_reset=puch_request.do_reset,
+        do_reset=push_request.do_reset,
     )
 
     # setup batching
     total_chunks_count = await chunk_model.get_total_chunks_count(project_id=project.project_id)
     pbar = tqdm(total=total_chunks_count, desc="Vector Indexing", position=0)
 
+    # Build asset name mappings
+    assets = await asset_model.get_all_project_assets(
+        asset_project_id=project_id,
+        asset_type=AssetTypeEnum.FILE.value
+    )
+    asset_names = {a.asset_id: a.asset_name for a in assets}
+    asset_uuids = {a.asset_id: str(a.asset_uuid) for a in assets}
+    original_filenames = {a.asset_id: a.original_filename for a in assets}
 
-    while has_records == True:
+    while has_records:
         page_chunks = await chunk_model.get_poject_chunks(project_id=project.project_id, page_no=page_no)
         if len(page_chunks):
             page_no += 1
@@ -75,19 +88,22 @@ async def index_project(request: Request, project_id: int, puch_request:PushRequ
             break
 
         chunks_ids = [c.chunk_id for c in page_chunks]
-        idx += len(page_chunks)
         
         is_inserted = await nlp_controller.index_into_vector_db(
             project=project,
             chunks=page_chunks,
-            chunk_ids=chunks_ids
+            chunk_ids=chunks_ids,
+            asset_names=asset_names,
+            asset_uuids=asset_uuids,
+            original_filenames=original_filenames,
+            do_reset=False  # Already handled above
         )
         if not is_inserted:
             logger.error(f"Failed to index project {project_id}")
             return JSONResponse(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 content={
-                    "signal" : ResponseSignal.INSERT_INTO_VECTORDB_ERROR.value
+                    "signal": ResponseSignal.INSERT_INTO_VECTORDB_ERROR.value
                 }
             )
         pbar.update(len(page_chunks))
@@ -96,8 +112,8 @@ async def index_project(request: Request, project_id: int, puch_request:PushRequ
     return JSONResponse(
         status_code=status.HTTP_200_OK,
         content={
-            "signal" : ResponseSignal.INSERT_INTO_VECTORDB_SUCCESS.value,
-            "inserted_items_count" : inserted_items_count
+            "signal": ResponseSignal.INSERT_INTO_VECTORDB_SUCCESS.value,
+            "inserted_items_count": inserted_items_count
         }
     )
 
@@ -116,7 +132,7 @@ async def get_project_index_info(request: Request, project_id: int):
         vectordb_client=request.app.vectordb_client,
         generation_client=request.app.generation_client,
         embedding_client=request.app.embedding_client,
-        template_parser = request.app.template_parser,
+        template_parser=request.app.template_parser,
     )
 
     collection_info = await nlp_controller.get_vector_db_collection_info(project=project)
@@ -143,12 +159,14 @@ async def search_index(request: Request, project_id: int, search_request: Search
         vectordb_client=request.app.vectordb_client,
         generation_client=request.app.generation_client,
         embedding_client=request.app.embedding_client,
-        template_parser = request.app.template_parser,
-   
+        template_parser=request.app.template_parser,
     )
 
     results = await nlp_controller.search_vector_db_collection(
-        project=project, text=search_request.text, limit=search_request.limit
+        project=project, 
+        text=search_request.text, 
+        limit=search_request.limit,
+        similarity_threshold=search_request.similarity_threshold
     )
 
     if results is False or results is None:
@@ -162,12 +180,12 @@ async def search_index(request: Request, project_id: int, search_request: Search
     return JSONResponse(
         content={
             "signal": ResponseSignal.VECTORDB_SEARCH_SUCCESS.value,
-            "results": [ result.dict()  for result in results ]
+            "results": results
         }
     )
 
 @nlp_router.post("/index/answer/{project_id}")
-async def answer_rag(request: Request, project_id: int, search_request: SearchRequest):
+async def answer_rag(request: Request, project_id: int, answer_request: AnswerRequest):
     
     project_model = await ProjectModel.create_instance(
         db_client=request.app.db_client
@@ -181,12 +199,14 @@ async def answer_rag(request: Request, project_id: int, search_request: SearchRe
         vectordb_client=request.app.vectordb_client,
         generation_client=request.app.generation_client,
         embedding_client=request.app.embedding_client,
-        template_parser = request.app.template_parser,
+        template_parser=request.app.template_parser,
     )
 
-    answer, full_prompt, chat_history = await nlp_controller.answer_rag_question(
-
-        project=project, query=search_request.text, limit=search_request.limit
+    answer, full_prompt, chat_history, citations = await nlp_controller.answer_rag_question(
+        project=project, 
+        query=answer_request.text, 
+        limit=answer_request.limit,
+        chat_history=answer_request.chat_history
     )
    
     if not answer:
@@ -201,8 +221,7 @@ async def answer_rag(request: Request, project_id: int, search_request: SearchRe
         content={
             "signal": ResponseSignal.RAG_ANSWER_SUCCESS.value,
             "answer": answer,
-            "full_prompt" : full_prompt,
-            "chat_history": chat_history,
+            "sources": citations,
+            "chat_history": chat_history
         }
     )
- 

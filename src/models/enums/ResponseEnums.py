@@ -19,4 +19,13 @@ class ResponseSignal(Enum):
     VECTORDB_SEARCH_SUCCESS = "vectordb_search_success"
     RAG_ANSWER_ERROR = "rag_answer_error"
     RAG_ANSWER_SUCCESS = "rag_answer_success"
+    PROJECT_CREATED = "project_created"
+    PROJECT_UPDATED = "project_updated"
+    PROJECT_DELETED = "project_deleted"
+    PROJECT_LIST_RETRIEVED = "project_list_retrieved"
+    DOCUMENT_LIST_RETRIEVED = "document_list_retrieved"
+    DOCUMENT_DELETED = "document_deleted"
+    DOCUMENT_REPROCESSING = "document_reprocessing"
+    PREVIEW_GENERATED = "preview_generated"
+    DUPLICATE_FILE = "duplicate_file"
     

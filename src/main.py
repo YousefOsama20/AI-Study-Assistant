@@ -1,5 +1,10 @@
+import os
+import sys
+
 from fastapi import FastAPI , APIRouter
-from routes import base ,data, nlp
+from fastapi.middleware.cors import CORSMiddleware
+from routes import base ,data, nlp, project, document
+from routes import system
 from helpers.config import get_settings
 from stores.llm.LLMProviderFactory import LLMProviderFactory
 from stores.vectordb.VectorDBProviderFactory import VectorDBProviderFactory    
@@ -7,7 +12,56 @@ from stores.llm.templates.template_perser import TemplateParser
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
 
+import logging
+
+logger = logging.getLogger("uvicorn.error")
+
 print("MAIN.PY LOADED")
+
+
+def _env_flag(name: str, default: bool) -> bool:
+    raw = os.environ.get(name)
+    if raw is None or raw.strip() == "":
+        return default
+    return raw.strip().lower() in ("1", "true", "yes", "on")
+
+
+def is_packaged_mode() -> bool:
+    if getattr(sys, "frozen", False):
+        return True
+    return _env_flag("MINIRAG_PACKAGED", False)
+
+
+def resolve_host(default_dev: str = "0.0.0.0") -> str:
+    explicit = os.environ.get("HOST", "").strip()
+    if explicit:
+        return explicit
+    return "127.0.0.1" if is_packaged_mode() else default_dev
+
+
+def resolve_port(default_port: int = 5000) -> int:
+    explicit = os.environ.get("PORT", "").strip()
+    if explicit:
+        try:
+            return int(explicit)
+        except ValueError:
+            logger.warning(f"Invalid PORT value {explicit!r}, falling back to {default_port}")
+    return default_port
+
+
+def resolve_reload() -> bool:
+    explicit = os.environ.get("RELOAD", "").strip()
+    if explicit:
+        return explicit.lower() in ("1", "true", "yes", "on")
+    return not is_packaged_mode()
+
+
+def should_auto_migrate() -> bool:
+    explicit = os.environ.get("MINIRAG_AUTO_MIGRATE", "").strip()
+    if explicit:
+        return explicit.lower() in ("1", "true", "yes", "on")
+    return is_packaged_mode()
+
 
 app = FastAPI()
 
@@ -22,6 +76,25 @@ async def startup_db_client():
     app.db_client = sessionmaker(
         app.db_engine, class_=AsyncSession, expire_on_commit=False
     )
+
+    # Optional auto-migration for packaged deployments (best effort)
+    app.db_ready = False
+    if should_auto_migrate():
+        try:
+            from helpers.migrations import run_migrations
+            run_migrations()
+            app.db_ready = True
+        except Exception as e:
+            logger.error(f"Auto-migration failed: {e}")
+    else:
+        try:
+            from sqlalchemy import text
+            async with app.db_engine.connect() as conn:
+                await conn.execute(text("SELECT 1"))
+            app.db_ready = True
+        except Exception as e:
+            logger.error(f"Database connectivity check failed: {e}")
+
     llm_provider_factory = LLMProviderFactory(setting)
     vectordb_provider_factory = VectorDBProviderFactory(config=setting, db_client=app.db_client)
 
@@ -38,7 +111,12 @@ async def startup_db_client():
     app.vectordb_client = vectordb_provider_factory.create(
         provider=setting.VECTOR_DB_BACKEND
     )
-    await app.vectordb_client.connect()      
+    try:
+        await app.vectordb_client.connect()
+        app.vectordb_ready = True
+    except Exception as e:
+        app.vectordb_ready = False
+        logger.error(f"Vector DB connection failed: {e}")
 
     app.template_parser = TemplateParser(
         language =setting.PRIMARY_LANG,
@@ -47,14 +125,47 @@ async def startup_db_client():
 
 @app.on_event("shutdown")
 async def shutdown_db_client():
-    app.db_engine.dispose()
-    await app.vectordb_client.disconnect()
+    try:
+        app.db_engine.dispose()
+    except Exception:
+        pass
+    try:
+        await app.vectordb_client.disconnect()
+    except Exception:
+        pass
+
+# Narrow CORS allowlist for local browser development only.
+# Production Electron uses IPC, so no permissive CORS is needed.
+_cors_origins = os.environ.get("CORS_ALLOW_ORIGINS", "").strip()
+if _cors_origins:
+    _origins = [o.strip() for o in _cors_origins.split(",") if o.strip()]
+    if _origins:
+        app.add_middleware(
+            CORSMiddleware,
+            allow_origins=_origins,
+            allow_credentials=False,
+            allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
+            allow_headers=["Content-Type"],
+        )
 
 app.include_router(base.base_router)
 app.include_router(data.data_router)
 app.include_router(nlp.nlp_router)
- 
+app.include_router(project.project_router)
+app.include_router(document.document_router)
+app.include_router(system.system_router)
+
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("main:app", host="0.0.0.0", port=5000, reload=True)
+
+    reload_enabled = resolve_reload() and not getattr(sys, "frozen", False)
+    # Uvicorn requires an import string only when reload is enabled. Passing the
+    # app object directly keeps the frozen entry point working under PyInstaller.
+    target = "main:app" if reload_enabled else app
+    uvicorn.run(
+        target,
+        host=resolve_host(),
+        port=resolve_port(),
+        reload=reload_enabled,
+    )

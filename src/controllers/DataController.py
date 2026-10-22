@@ -15,9 +15,18 @@ class DataController(BassController):
     def  validate_uploaded_file(self, file: UploadFile):
 
         if file.content_type not in self.app_setting.FILE_UPLOAD_TYPES:
-           return False , ResponseSignal.FILE_TYPE_NOT_ALLOWED.value
+           return False , ResponseSignal.FILE_TYPE_NOT_SUPPORTED.value
 
-        if file.size > self.app_setting.FILE_MAX_SIZE * self.size_scale:
+        file_size = getattr(file, "size", None)
+        if file_size is None:
+            try:
+                file.file.seek(0, 2)
+                file_size = file.file.tell()
+                file.file.seek(0)
+            except Exception:
+                file_size = 0
+
+        if file_size is None or file_size > self.app_setting.FILE_MAX_SIZE * self.size_scale:
            return False , ResponseSignal.FILE_SIZE_EXCEEDED.value
 
         return True , ResponseSignal.FILE_VALIDATED_SUCCESS.value

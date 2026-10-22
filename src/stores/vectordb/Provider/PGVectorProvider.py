@@ -70,15 +70,16 @@ class PGVectorProvider(VectorDBInterface):
                     WHERE tablename = :collection_name
                 ''')
 
-                count_sql = sql_text(f'SELECT COUNT(*) FROM {collection_name}')
-
-                table_info = await session.execute(table_info_sql, {"collection_name": collection_name})
-                record_count = await session.execute(count_sql)
-
+                table_info = await session.execute(
+                    table_info_sql, {"collection_name": collection_name}
+                )
                 table_data = table_info.fetchone()
                 if not table_data:
                     return None
-                
+
+                count_sql = sql_text(f'SELECT COUNT(*) FROM {collection_name}')
+                record_count = await session.execute(count_sql)
+
                 return {
                     "table_info": {
                         "schemaname": table_data[0],
@@ -274,7 +275,10 @@ class PGVectorProvider(VectorDBInterface):
         vector = "[" + ",".join([ str(v) for v in vector ]) + "]"
         async with self.db_client() as session:
             async with session.begin():
-                search_sql = sql_text(f'SELECT {PgVectorTableSchemeEnums.TEXT.value} as text, 1 - ({PgVectorTableSchemeEnums.VECTOR.value} <=> :vector) as score'
+                search_sql = sql_text(f'SELECT {PgVectorTableSchemeEnums.TEXT.value} as text, '
+                                      f'1 - ({PgVectorTableSchemeEnums.VECTOR.value} <=> :vector) as score, '
+                                      f'{PgVectorTableSchemeEnums.METADATA.value} as metadata, '
+                                      f'{PgVectorTableSchemeEnums.CHUNK_ID.value} as chunk_id'
                                       f' FROM {collection_name}'
                                       ' ORDER BY score DESC '
                                       f'LIMIT {limit}'
@@ -287,7 +291,28 @@ class PGVectorProvider(VectorDBInterface):
                 return [
                     RetrievedDocument(
                         text=record.text,
-                        score=record.score
+                        score=record.score,
+                        metadata=record.metadata if hasattr(record, "metadata") else None,
+                        chunk_id=record.chunk_id if hasattr(record, "chunk_id") else None,
                     )
                     for record in records
                 ]
+
+    async def delete_records_by_ids(self, collection_name: str, record_ids: List[int]):
+        if not record_ids:
+            return True
+
+        is_collection_exists = await self.is_collection_exists(collection_name=collection_name)
+        if not is_collection_exists:
+            return True
+
+        async with self.db_client() as session:
+            async with session.begin():
+                delete_sql = sql_text(
+                    f'DELETE FROM {collection_name} '
+                    f'WHERE {PgVectorTableSchemeEnums.CHUNK_ID.value} = ANY(:chunk_ids)'
+                )
+                await session.execute(delete_sql, {"chunk_ids": list(record_ids)})
+                await session.commit()
+
+        return True
