@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-label="Mini-RAG Study Assistant">
+  <rect x="16" y="16" width="480" height="480" rx="112" fill="#BE5103"/>
+  <path d="M96 160 250 132v240L96 400Z" fill="#FFCE1B"/>
+  <path d="M262 132 416 160v240l-154-28Z" fill="#FFCE1B"/>
+  <path d="M256 132v240" stroke="#B7410E" stroke-width="12" stroke-linecap="round"/>
+  <path d="M128 210l92-16M128 254l92-16M128 298l92-16" stroke="#BE5103" stroke-width="12" stroke-linecap="round" opacity="0.45"/>
+  <path d="M292 210l92 16M292 254l92 16M292 298l92 16" stroke="#BE5103" stroke-width="12" stroke-linecap="round" opacity="0.45"/>
+  <path d="M292 132h60v122l-30-26-30 26Z" fill="#069494"/>
+  <circle cx="170" cy="356" r="30" fill="#B7410E"/>
+  <path d="M191 377l52 52" stroke="#B7410E" stroke-width="24" stroke-linecap="round"/>
+</svg>

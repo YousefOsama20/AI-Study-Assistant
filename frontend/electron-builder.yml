@@ -1,0 +1,41 @@
+appId: com.minirag.studyassistant
+productName: Mini-RAG Study Assistant
+copyright: Copyright © 2026 Mini-RAG contributors
+
+directories:
+  output: dist
+  buildResources: assets
+
+files:
+  - electron/dist/**/*
+  - electron/package.json
+  - build/renderer/**/*
+  - package.json
+
+extraResources:
+  - from: build/backend
+    to: backend
+    filter:
+      - "**/*"
+
+asar: true
+compression: normal
+
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+  icon: assets/icon.ico
+  artifactName: Mini-RAG Study Assistant Setup ${version}.${ext}
+
+nsis:
+  oneClick: false
+  perMachine: false
+  allowElevation: true
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: Mini-RAG Study Assistant
+  uninstallDisplayName: Mini-RAG Study Assistant
+  deleteAppDataOnUninstall: false

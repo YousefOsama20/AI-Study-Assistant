@@ -1,0 +1,86 @@
+import { useEffect, useState } from 'react'
+import { RefreshCw, ServerCrash } from 'lucide-react'
+import { useBackendStore } from '../../stores/backend'
+import { useI18n } from '../../lib/i18n'
+import { Button } from '../ui/Button'
+
+const POLL_MS = 30_000
+
+export function BackendBanner() {
+  const health = useBackendStore((s) => s.health)
+  const check = useBackendStore((s) => s.check)
+  const processError = useBackendStore((s) => s.processError)
+  const { t } = useI18n()
+  const [visible, setVisible] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+    const run = async () => {
+      await check()
+      if (!cancelled) setVisible(true)
+    }
+    void run()
+    const timer = window.setInterval(() => {
+      void check()
+    }, POLL_MS)
+    const unsubscribe = window.minirag?.onBackendStatus?.((status) => {
+      if (status.state === 'running' || status.state === 'failed') {
+        void check()
+      }
+    })
+    return () => {
+      cancelled = true
+      window.clearInterval(timer)
+      unsubscribe?.()
+    }
+  }, [check])
+
+  if (!visible || health === 'ok') return null
+
+  const isError = health === 'unreachable'
+
+  return (
+    <div
+      role="alert"
+      className={`flex items-center justify-between gap-3 border-b px-4 py-2 text-sm ${
+        isError
+          ? 'border-danger/30 bg-danger-soft text-danger'
+          : 'border-warning/30 bg-warning-soft text-warning'
+      }`}
+    >
+      <div className="flex items-center gap-2">
+        {isError ? (
+          <ServerCrash className="size-4 shrink-0" aria-hidden="true" />
+        ) : (
+          <span
+            className="inline-block size-2 rounded-full bg-warning"
+            aria-hidden="true"
+          />
+        )}
+        <span className="font-medium">
+          {health === 'checking'
+            ? t('backend.checking')
+            : health === 'degraded'
+              ? t('backend.degraded')
+              : t('backend.disconnected')}
+        </span>
+        {isError ? (
+          <span className="hidden text-xs opacity-80 md:inline">
+            {processError || t('backend.errorHint')}
+          </span>
+        ) : null}
+      </div>
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={() => {
+          void check()
+        }}
+        icon={<RefreshCw className="size-3.5" />}
+        className={isError ? 'text-danger hover:bg-danger/10' : 'text-warning hover:bg-warning/10'}
+      >
+        {t('common.retry')}
+      </Button>
+    </div>
+  )
+}
