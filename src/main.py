@@ -1,9 +1,13 @@
 import os
 import sys
+from contextlib import asynccontextmanager
 
-from fastapi import FastAPI , APIRouter
+from dotenv import load_dotenv
+load_dotenv()
+
+from fastapi import FastAPI, APIRouter
 from fastapi.middleware.cors import CORSMiddleware
-from routes import base ,data, nlp, project, document
+from routes import base, data, nlp, project, document
 from routes import system
 from helpers.config import get_settings
 from stores.llm.LLMProviderFactory import LLMProviderFactory
@@ -63,10 +67,8 @@ def should_auto_migrate() -> bool:
     return is_packaged_mode()
 
 
-app = FastAPI()
-
-@app.on_event("startup")
-async def startup_db_client():
+@asynccontextmanager
+async def lifespan(app: FastAPI):
     setting = get_settings()
 
     postgres_conn = f"postgresql+asyncpg://{setting.POSTGRES_USERNAME}:{setting.POSTGRES_PASSWORD}@{setting.POSTGRES_HOST}:{setting.POSTGRES_PORT}/{setting.POSTGRES_MAIN_DATABASE}"
@@ -123,16 +125,19 @@ async def startup_db_client():
         default_language = setting.DEFAULT_LANG
     )
 
-@app.on_event("shutdown")
-async def shutdown_db_client():
+    yield
+
     try:
-        app.db_engine.dispose()
+        await app.db_engine.dispose()
     except Exception:
         pass
     try:
         await app.vectordb_client.disconnect()
     except Exception:
         pass
+
+
+app = FastAPI(lifespan=lifespan)
 
 # Narrow CORS allowlist for local browser development only.
 # Production Electron uses IPC, so no permissive CORS is needed.

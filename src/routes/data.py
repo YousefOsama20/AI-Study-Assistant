@@ -33,7 +33,7 @@ def compute_file_hash(file_path: str) -> str:
 def validate_pdf_content(file_path: str) -> tuple[bool, int]:
     """Validate PDF file and return (is_valid, page_count)."""
     try:
-        import fitz  # PyMuPDF
+        import pymupdf as fitz  # PyMuPDF
         doc = fitz.open(file_path)
         page_count = doc.page_count
         doc.close()
