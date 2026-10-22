@@ -1,4 +1,4 @@
-from pydantic_settings import BaseSettings,SettingsConfigDict
+from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import List
 
 class Settings(BaseSettings):
@@ -13,9 +13,9 @@ class Settings(BaseSettings):
 
     POSTGRES_USERNAME: str
     POSTGRES_PASSWORD: str
-    POSTGRES_HOST:str
-    POSTGRES_PORT:int
-    POSTGRES_MAIN_DATABASE:str
+    POSTGRES_HOST: str
+    POSTGRES_PORT: int
+    POSTGRES_MAIN_DATABASE: str
 
     GENERATION_BACKEND: str
     EMBEDDING_BACKEND: str
@@ -25,7 +25,7 @@ class Settings(BaseSettings):
     COHERE_API_KEY: str = None
     GEMINI_API_KEY: str = None
 
-    GENERATION_MODEL_ID_LITERAL : List = None
+    GENERATION_MODEL_ID_LITERAL: List = None
     GENERATION_MODEL_ID: str = None
     EMBEDDING_MODEL_ID: str = None
     EMBEDDING_MODEL_SIZE: int = None
@@ -33,17 +33,36 @@ class Settings(BaseSettings):
     GENERATION_DAFAULT_MAX_TOKENS: int = None
     GENERATION_DAFAULT_TEMPERATURE: float = None
     
-    VECTOR_DB_BACKEND_LITERAL : List = None
-    VECTOR_DB_BACKEND : str
-    VECTOR_DB_PATH : str
-    VECTOR_DB_DISTANCE_METHOD : str = None
-    VECTOR_DB_PGVEC_INDEX_THRESHOLD : int = 100
+    VECTOR_DB_BACKEND_LITERAL: List = None
+    VECTOR_DB_BACKEND: str
+    VECTOR_DB_PATH: str
+    VECTOR_DB_DISTANCE_METHOD: str
+    VECTOR_DB_PGVEC_INDEX_THRESHOLD: int
 
-    PRIMARY_LANG : str = "en"
-    DEFAULT_LANG : str = "en"
+    # Preview settings
+    PREVIEW_DPI: int = None
+    PREVIEW_IMAGE_FORMAT: str = None
+    MAX_PREVIEW_PAGES: int = None
+    
+    # Chunk defaults
+    CHUNK_SIZE_DEFAULT: int = None
+    CHUNK_OVERLAP_DEFAULT: int = None
 
-    class Config:
-        env_file = ".env"
+    PRIMARY_LANG: str
+    DEFAULT_LANG: str
+
+    HOST: str
+    PORT: int
+    RELOAD: bool
+
+    MINIRAG_PACKAGED: bool
+    MINIRAG_AUTO_MIGRATE: bool
+
+    MINIRAG_DATA_DIR: str = None
+
+    CORS_ALLOW_ORIGINS: List = None
+    
+    model_config = SettingsConfigDict(env_file = ".env", extra="ignore")
 
 def get_settings():
     return Settings()
