@@ -41,7 +41,7 @@ describe('apiErrorFromResponse', () => {
 
 describe('fetch transport', () => {
   beforeEach(() => {
-    delete window.minirag
+    delete window.aiStudyAssistant
   })
 
   it('returns parsed JSON on success', async () => {
@@ -127,11 +127,11 @@ describe('fetch transport', () => {
 
 describe('upload transport', () => {
   afterEach(() => {
-    delete window.minirag
+    delete window.aiStudyAssistant
   })
 
   it('builds a FormData POST with files appended', async () => {
-    delete window.minirag
+    delete window.aiStudyAssistant
     const fetchMock = vi.fn().mockResolvedValue(
       jsonResponse(200, { signal: 'success', files: [] }),
     )
@@ -154,7 +154,7 @@ describe('upload transport', () => {
         json: { signal: 'success', files: [] },
       }),
     }
-    window.minirag = bridge as unknown as Window['minirag']
+    window.aiStudyAssistant = bridge as unknown as Window['aiStudyAssistant']
 
     const result = await transportUpload('/api/v1/data/upload/1', [
       { name: 'a.pdf', type: 'application/pdf', data: new Uint8Array([1]) },
@@ -181,13 +181,13 @@ describe('upload transport', () => {
           resolveUpload = resolve
         }),
     )
-    window.minirag = {
+    window.aiStudyAssistant = {
       uploadFiles,
       onUploadProgress: vi.fn((callback) => {
         emitProgress = callback
         return unsubscribe
       }),
-    } as unknown as Window['minirag']
+    } as unknown as Window['aiStudyAssistant']
 
     const onProgress = vi.fn()
     const promise = transportUpload(
@@ -214,26 +214,26 @@ describe('upload transport', () => {
 
 describe('IPC transport', () => {
   afterEach(() => {
-    delete window.minirag
+    delete window.aiStudyAssistant
   })
 
-  it('detects the IPC bridge when window.minirag exists', () => {
-    window.minirag = {
+  it('detects the IPC bridge when window.aiStudyAssistant exists', () => {
+    window.aiStudyAssistant = {
       apiRequest: vi.fn(),
-    } as unknown as Window['minirag']
+    } as unknown as Window['aiStudyAssistant']
     expect(detectTransport()).toBe('ipc')
-    delete window.minirag
+    delete window.aiStudyAssistant
     expect(detectTransport()).toBe('fetch')
   })
 
   it('apiRequest resolves bridge results', async () => {
-    window.minirag = {
+    window.aiStudyAssistant = {
       apiRequest: vi.fn().mockResolvedValue({
         status: 201,
         ok: true,
         json: { signal: 'success' },
       }),
-    } as unknown as Window['minirag']
+    } as unknown as Window['aiStudyAssistant']
 
     const result = await transportRequest({
       method: 'POST',
@@ -245,9 +245,9 @@ describe('IPC transport', () => {
   })
 
   it('bridge failures become network ApiErrors', async () => {
-    window.minirag = {
+    window.aiStudyAssistant = {
       apiRequest: vi.fn().mockRejectedValue(new Error('boom')),
-    } as unknown as Window['minirag']
+    } as unknown as Window['aiStudyAssistant']
 
     await expect(
       transportRequest({ method: 'GET', path: '/api/v1/projects' }),
@@ -266,10 +266,10 @@ describe('IPC transport', () => {
           rejectRequest = reject
         }),
     )
-    window.minirag = {
+    window.aiStudyAssistant = {
       apiRequest,
       cancelRequest,
-    } as unknown as Window['minirag']
+    } as unknown as Window['aiStudyAssistant']
 
     const controller = new AbortController()
     const promise = transportRequest({
@@ -299,7 +299,7 @@ describe('IPC transport', () => {
         rejectRequest(new Error('cancelled'))
         return Promise.resolve()
       })
-      window.minirag = {
+      window.aiStudyAssistant = {
         apiRequest: vi.fn(
           () =>
             new Promise((_resolve, reject) => {
@@ -307,7 +307,7 @@ describe('IPC transport', () => {
             }),
         ),
         cancelRequest,
-      } as unknown as Window['minirag']
+      } as unknown as Window['aiStudyAssistant']
 
       const promise = transportRequest({
         method: 'GET',
@@ -344,11 +344,11 @@ describe('IPC transport', () => {
       emitStatus = callback
       return unsubscribe
     })
-    window.minirag = {
+    window.aiStudyAssistant = {
       apiRequest,
       getBackendStatus: vi.fn(async () => status),
       onBackendStatus,
-    } as unknown as Window['minirag']
+    } as unknown as Window['aiStudyAssistant']
 
     const promise = transportRequest({
       method: 'GET',
@@ -368,14 +368,14 @@ describe('IPC transport', () => {
 
   it('rejects without sending when the backend failed to start', async () => {
     const apiRequest = vi.fn()
-    window.minirag = {
+    window.aiStudyAssistant = {
       apiRequest,
       getBackendStatus: vi.fn(async () => ({
         state: 'failed',
         port: null,
         error: 'Backend exited during startup',
       })),
-    } as unknown as Window['minirag']
+    } as unknown as Window['aiStudyAssistant']
 
     await expect(
       transportRequest({ method: 'GET', path: '/api/v1/health' }),
@@ -389,7 +389,7 @@ describe('IPC transport', () => {
   it('can be aborted while waiting for the backend to start', async () => {
     const onBackendStatus = vi.fn(() => vi.fn())
     const apiRequest = vi.fn()
-    window.minirag = {
+    window.aiStudyAssistant = {
       apiRequest,
       getBackendStatus: vi.fn(async () => ({
         state: 'starting',
@@ -397,7 +397,7 @@ describe('IPC transport', () => {
         error: null,
       })),
       onBackendStatus,
-    } as unknown as Window['minirag']
+    } as unknown as Window['aiStudyAssistant']
 
     const controller = new AbortController()
     const promise = transportRequest({
@@ -416,7 +416,7 @@ describe('IPC transport', () => {
 
 describe('client high-level calls', () => {
   beforeEach(() => {
-    delete window.minirag
+    delete window.aiStudyAssistant
   })
 
   it('throws ApiError on non-ok responses', async () => {
@@ -462,32 +462,32 @@ describe('client high-level calls', () => {
 
 describe('resolvePreviewUrl', () => {
   afterEach(() => {
-    delete window.minirag
+    delete window.aiStudyAssistant
   })
 
   it('fetch transport returns the direct path', async () => {
-    delete window.minirag
+    delete window.aiStudyAssistant
     const url = await resolvePreviewUrl(1, 2, 3)
     expect(url).toBe('/api/v1/projects/1/documents/2/preview/3')
   })
 
   it('IPC transport produces a blob URL from fetched bytes', async () => {
-    window.minirag = {
+    window.aiStudyAssistant = {
       fetchBinary: vi.fn().mockResolvedValue({
         status: 200,
         ok: true,
         data: new Uint8Array([137, 80]),
       }),
-    } as unknown as Window['minirag']
+    } as unknown as Window['aiStudyAssistant']
 
     const url = await resolvePreviewUrl(1, 2, 3)
     expect(url.startsWith('blob:')).toBe(true)
   })
 
   it('IPC transport surfaces binary failures as ApiError', async () => {
-    window.minirag = {
+    window.aiStudyAssistant = {
       fetchBinary: vi.fn().mockResolvedValue({ status: 404, ok: false, data: new Uint8Array() }),
-    } as unknown as Window['minirag']
+    } as unknown as Window['aiStudyAssistant']
 
     await expect(resolvePreviewUrl(1, 2, 3)).rejects.toBeInstanceOf(ApiError)
   })
@@ -495,11 +495,11 @@ describe('resolvePreviewUrl', () => {
 
 describe('transportBinary', () => {
   afterEach(() => {
-    delete window.minirag
+    delete window.aiStudyAssistant
   })
 
   it('fetch transport returns bytes', async () => {
-    delete window.minirag
+    delete window.aiStudyAssistant
     vi.stubGlobal(
       'fetch',
       vi.fn().mockResolvedValue(new Response(new Uint8Array([1, 2, 3]))),

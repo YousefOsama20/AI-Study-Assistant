@@ -83,7 +83,7 @@ export const useSettingsStore = create<SettingsState>()(
         })),
     }),
     {
-      name: 'minirag-settings',
+      name: 'ai-study-assistant-settings',
       partialize: (s) => ({
         theme: s.theme,
         language: s.language,

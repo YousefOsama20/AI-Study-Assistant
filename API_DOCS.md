@@ -1,4 +1,4 @@
-# API Documentation - Mini-RAG Study Assistant
+# API Documentation - AI-Study-Assistant
 
 ## Base URL
 
@@ -62,7 +62,7 @@ as "server is up", even when degraded.
 ```json
 {
   "status": "ok",
-  "app": { "name": "mini-RAG", "version": "0.1" },
+  "app": { "name": "AI-Study-Assistant", "version": "0.1" },
   "database": { "configured": true, "connected": true, "error": null },
   "vectordb": { "backend": "PGVECTOR", "connected": true, "error": null },
   "generation": {

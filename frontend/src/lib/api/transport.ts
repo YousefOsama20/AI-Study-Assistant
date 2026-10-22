@@ -42,7 +42,7 @@ const BACKEND_READY_TIMEOUT_MS = 60_000
 const BACKEND_STATUS_POLL_MS = 500
 
 type BackendStatusPayload = Awaited<
-  ReturnType<NonNullable<Window['minirag']>['getBackendStatus']>
+  ReturnType<NonNullable<Window['aiStudyAssistant']>['getBackendStatus']>
 >
 
 function backendNotRunning(status: BackendStatusPayload): ApiError {
@@ -53,8 +53,8 @@ function backendNotRunning(status: BackendStatusPayload): ApiError {
 }
 
 async function waitForBackendReady(signal?: AbortSignal): Promise<void> {
-  if (!hasIpcBridge() || !window.minirag) return
-  const bridge = window.minirag
+  if (!hasIpcBridge() || !window.aiStudyAssistant) return
+  const bridge = window.aiStudyAssistant
   if (typeof bridge.getBackendStatus !== 'function') return
 
   if (signal?.aborted) {
@@ -133,12 +133,12 @@ async function waitForBackendReady(signal?: AbortSignal): Promise<void> {
 }
 
 export function detectTransport(): TransportKind {
-  if (typeof window !== 'undefined' && window.minirag) return 'ipc'
+  if (typeof window !== 'undefined' && window.aiStudyAssistant) return 'ipc'
   return 'fetch'
 }
 
 function hasIpcBridge(): boolean {
-  return typeof window !== 'undefined' && Boolean(window.minirag)
+  return typeof window !== 'undefined' && Boolean(window.aiStudyAssistant)
 }
 
 let ipcRequestCounter = 0
@@ -149,7 +149,7 @@ function nextIpcRequestId(): string {
 }
 
 function cancelIpcRequest(requestId: string): void {
-  void window.minirag?.cancelRequest?.(requestId)?.catch(() => {})
+  void window.aiStudyAssistant?.cancelRequest?.(requestId)?.catch(() => {})
 }
 
 async function fetchRequest(
@@ -207,7 +207,7 @@ async function fetchRequest(
 }
 
 async function ipcRequest(req: TransportRequest): Promise<TransportResponse> {
-  if (!window.minirag) {
+  if (!window.aiStudyAssistant) {
     throw new ApiError('network', 'Electron bridge is not available')
   }
   if (req.signal?.aborted) {
@@ -230,7 +230,7 @@ async function ipcRequest(req: TransportRequest): Promise<TransportResponse> {
   req.signal?.addEventListener('abort', onExternalAbort, { once: true })
 
   try {
-    const result = await window.minirag.apiRequest({
+    const result = await window.aiStudyAssistant.apiRequest({
       method: req.method,
       path: req.path,
       body: req.body,
@@ -361,7 +361,7 @@ async function ipcUpload(
   files: UploadFilePayload[],
   options: TransportUploadOptions,
 ): Promise<TransportResponse> {
-  if (!window.minirag) {
+  if (!window.aiStudyAssistant) {
     throw new ApiError('network', 'Electron bridge is not available')
   }
   if (options.signal?.aborted) {
@@ -383,7 +383,7 @@ async function ipcUpload(
   const onExternalAbort = () => cancelIpcRequest(requestId)
   options.signal?.addEventListener('abort', onExternalAbort, { once: true })
   const unsubscribe = options.onProgress
-    ? window.minirag.onUploadProgress?.((progress) => {
+    ? window.aiStudyAssistant.onUploadProgress?.((progress) => {
         if (progress.requestId !== requestId) return
         options.onProgress?.(
           uploadProgress(progress.loaded, progress.total),
@@ -392,7 +392,7 @@ async function ipcUpload(
     : undefined
 
   try {
-    const result = await window.minirag.uploadFiles(path, files, {
+    const result = await window.aiStudyAssistant.uploadFiles(path, files, {
       requestId,
       timeoutMs,
     })
@@ -476,9 +476,9 @@ export async function transportBinary(
   path: string,
   timeoutMs = 30_000,
 ): Promise<Uint8Array> {
-  if (hasIpcBridge() && window.minirag) {
+  if (hasIpcBridge() && window.aiStudyAssistant) {
     await waitForBackendReady()
-    const result = await window.minirag.fetchBinary(path, timeoutMs)
+    const result = await window.aiStudyAssistant.fetchBinary(path, timeoutMs)
     if (!result.ok) {
       throw new ApiError('http', `Binary fetch failed (${result.status})`, {
         status: result.status,

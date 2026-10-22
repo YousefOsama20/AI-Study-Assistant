@@ -98,7 +98,7 @@ function buildMultipartBody(files: UploadFilePayload[]): {
   boundary: string
   body: Buffer
 } {
-  const boundary = `----MiniRAG${randomBytes(12).toString('hex')}`
+  const boundary = `----AIStudyAssistant${randomBytes(12).toString('hex')}`
   const parts: Buffer[] = []
   for (const file of files) {
     const name = file.name.replace(/[\r\n"]/g, '_')
@@ -216,7 +216,7 @@ function streamUploadRequest(options: {
 }
 
 function registerIpcHandlers(manager: BackendManager): void {
-  ipcMain.handle('minirag:api-request', async (_event, options: ApiRequestOptions) => {
+  ipcMain.handle('aiStudyAssistant:api-request', async (_event, options: ApiRequestOptions) => {
     const method = typeof options?.method === 'string' ? options.method : ''
     const safePath = normalizePath(options?.path)
     const pathname = safePath ? pathnameOf(safePath) : null
@@ -284,14 +284,14 @@ function registerIpcHandlers(manager: BackendManager): void {
     }
   })
 
-  ipcMain.handle('minirag:cancel-request', (_event, rawRequestId: unknown) => {
+  ipcMain.handle('aiStudyAssistant:cancel-request', (_event, rawRequestId: unknown) => {
     const requestId = normalizeRequestId(rawRequestId)
     if (!requestId) return
     pendingRequests.get(requestId)?.abort()
   })
 
   ipcMain.handle(
-    'minirag:upload-files',
+    'aiStudyAssistant:upload-files',
     async (
       event,
       rawPath: unknown,
@@ -371,7 +371,7 @@ function registerIpcHandlers(manager: BackendManager): void {
               loaded,
               total,
             }
-            event.sender.send('minirag:upload-progress', payload)
+            event.sender.send('aiStudyAssistant:upload-progress', payload)
           },
         })
       } finally {
@@ -382,7 +382,7 @@ function registerIpcHandlers(manager: BackendManager): void {
   )
 
   ipcMain.handle(
-    'minirag:fetch-binary',
+    'aiStudyAssistant:fetch-binary',
     async (_event, rawPath: unknown, rawTimeoutMs: unknown) => {
       const safePath = normalizePath(rawPath)
       const pathname = safePath ? pathnameOf(safePath) : null
@@ -403,11 +403,11 @@ function registerIpcHandlers(manager: BackendManager): void {
     },
   )
 
-  ipcMain.handle('minirag:get-app-version', () => app.getVersion())
-  ipcMain.handle('minirag:get-backend-status', () => manager.getStatus())
-  ipcMain.handle('minirag:restart-backend', () => manager.restart())
+  ipcMain.handle('aiStudyAssistant:get-app-version', () => app.getVersion())
+  ipcMain.handle('aiStudyAssistant:get-backend-status', () => manager.getStatus())
+  ipcMain.handle('aiStudyAssistant:restart-backend', () => manager.restart())
 
-  ipcMain.handle('minirag:open-external', async (_event, rawUrl: unknown) => {
+  ipcMain.handle('aiStudyAssistant:open-external', async (_event, rawUrl: unknown) => {
     const safeUrl = isSafeExternalUrl(rawUrl)
     if (!safeUrl) {
       return { ok: false, error: 'Only valid http(s) links can be opened' }
@@ -417,7 +417,7 @@ function registerIpcHandlers(manager: BackendManager): void {
   })
 
   ipcMain.handle(
-    'minirag:open-original-pdf',
+    'aiStudyAssistant:open-original-pdf',
     async (
       _event,
       params: { projectId?: unknown; documentId?: unknown },
@@ -446,7 +446,7 @@ function registerIpcHandlers(manager: BackendManager): void {
           return { ok: false, error: `Document download failed (${response.status})` }
         }
         const buffer = Buffer.from(await response.arrayBuffer())
-        const dir = path.join(os.tmpdir(), 'mini-rag-study-assistant')
+        const dir = path.join(os.tmpdir(), 'ai-study-assistant')
         fs.mkdirSync(dir, { recursive: true })
         const target = path.join(dir, `document-${documentId}.pdf`)
         fs.writeFileSync(target, buffer)
@@ -508,7 +508,7 @@ function createWindow(manager: BackendManager): BrowserWindow {
 
   manager.on('status', (status) => {
     if (!win.isDestroyed()) {
-      win.webContents.send('minirag:backend-status', status)
+      win.webContents.send('aiStudyAssistant:backend-status', status)
     }
   })
 
@@ -518,7 +518,7 @@ function createWindow(manager: BackendManager): BrowserWindow {
 let backendStopping = false
 
 async function main(): Promise<void> {
-  app.setPath('userData', path.join(app.getPath('appData'), 'Mini-RAG Study Assistant'))
+  app.setPath('userData', path.join(app.getPath('appData'), 'AI-Study-Assistant'))
 
   const gotLock = app.requestSingleInstanceLock()
   if (!gotLock) {
@@ -543,7 +543,7 @@ async function main(): Promise<void> {
   void manager.start().catch((error: unknown) => {
     // Status surface is the renderer banner; keep the message in the log/status only.
     process.stderr.write(
-      `[mini-rag] backend failed to start: ${error instanceof Error ? error.message : String(error)}\n`,
+      `[ai-study-assistant] backend failed to start: ${error instanceof Error ? error.message : String(error)}\n`,
     )
   })
   createWindow(manager)
@@ -576,7 +576,7 @@ async function main(): Promise<void> {
 
 void main().catch((error: unknown) => {
   process.stderr.write(
-    `[mini-rag] fatal: ${error instanceof Error ? error.stack ?? error.message : String(error)}\n`,
+    `[ai-study-assistant] fatal: ${error instanceof Error ? error.stack ?? error.message : String(error)}\n`,
   )
   app.quit()
 })

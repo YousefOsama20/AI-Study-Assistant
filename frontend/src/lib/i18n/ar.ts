@@ -2,7 +2,7 @@ import type { Dictionary } from './en'
 
 // Arabic dictionary — keys are typechecked against the English source.
 export const ar: Dictionary = {
-  'app.name': 'مساعد الدراسة المصغّر للـ RAG',
+  'app.name': 'AI-Study-Assistant',
   'app.tagline': 'مساعد بحث محلي لمستنداتك',
 
   'common.loading': 'جارٍ التحميل…',
@@ -288,7 +288,7 @@ export const ar: Dictionary = {
   'about.title': 'حول التطبيق',
   'about.version': 'الإصدار {version}',
   'about.description':
-    'مساعد الدراسة المصغّر للـ RAG تطبيق سطح مكتب محلي لرفع ملفات PDF وبناء فهرس بحث متجهي وطرح أسئلة على مستنداتك.',
+    'AI-Study-Assistant تطبيق سطح مكتب محلي لرفع ملفات PDF وبناء فهرس بحث متجهي وطرح أسئلة على مستنداتك.',
   'about.stack': 'بُني باستخدام',
   'about.backendStatus': 'حالة الخادم',
   'about.license': 'الترخيص',

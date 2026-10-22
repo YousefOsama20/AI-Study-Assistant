@@ -1,7 +1,7 @@
 ;(function () {
   try {
     var preference = 'system'
-    var raw = window.localStorage.getItem('minirag-settings')
+    var raw = window.localStorage.getItem('ai-study-assistant-settings')
     if (raw) {
       try {
         var parsed = JSON.parse(raw)

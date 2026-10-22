@@ -21,6 +21,8 @@ hiddenimports = [
     "uvicorn.protocols.websockets.auto",
     "uvicorn.lifespan.on",
     "asyncpg",
+    "asyncpg.pgproto.pgproto",
+    "asyncpg.protocol.protocol",
     "psycopg2",
     "greenlet",
     "alembic",
@@ -43,12 +45,12 @@ for package in (
 
 datas = [
     (
-        str(SRC / "models" / "db_schemes" / "minirag" / "alembic"),
-        "models/db_schemes/minirag/alembic",
+        str(SRC / "models" / "db_schemes" / "ai_study_assistant" / "alembic"),
+        "models/db_schemes/ai_study_assistant/alembic",
     ),
     (
-        str(SRC / "models" / "db_schemes" / "minirag" / "alembic.ini"),
-        "models/db_schemes/minirag",
+        str(SRC / "models" / "db_schemes" / "ai_study_assistant" / "alembic.ini"),
+        "models/db_schemes/ai_study_assistant",
     ),
     # TemplateParser checks the locale directory on disk before importing,
     # so the locale packages must exist outside the PYZ archive.
@@ -78,7 +80,7 @@ exe = EXE(
     a.binaries,
     a.datas,
     [],
-    name="MiniRAGBackend",
+    name="AIStudyAssistantBackend",
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,

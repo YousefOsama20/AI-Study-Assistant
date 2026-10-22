@@ -80,7 +80,7 @@ describe('language and theme preferences', () => {
     expect(document.documentElement.style.colorScheme).toBe('dark')
 
     const persisted = JSON.parse(
-      window.localStorage.getItem('minirag-settings') ?? '{}',
+      window.localStorage.getItem('ai-study-assistant-settings') ?? '{}',
     ) as { state?: { theme?: string } }
     expect(persisted.state?.theme).toBe('dark')
   })

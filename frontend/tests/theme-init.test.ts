@@ -41,7 +41,7 @@ afterEach(() => {
 describe('theme-init', () => {
   it('applies a persisted dark preference before the app renders', () => {
     window.localStorage.setItem(
-      'minirag-settings',
+      'ai-study-assistant-settings',
       JSON.stringify({ state: { theme: 'dark' } }),
     )
     runThemeInit()
@@ -55,7 +55,7 @@ describe('theme-init', () => {
     const restore = mockSystemDark(true)
     try {
       window.localStorage.setItem(
-        'minirag-settings',
+        'ai-study-assistant-settings',
         JSON.stringify({ state: { theme: 'light' } }),
       )
       runThemeInit()
@@ -72,7 +72,7 @@ describe('theme-init', () => {
     const restore = mockSystemDark(true)
     try {
       window.localStorage.setItem(
-        'minirag-settings',
+        'ai-study-assistant-settings',
         JSON.stringify({ state: { theme: 'system' } }),
       )
       runThemeInit()
@@ -85,7 +85,7 @@ describe('theme-init', () => {
   })
 
   it('falls back to light for malformed persisted settings', () => {
-    window.localStorage.setItem('minirag-settings', '{not-json')
+    window.localStorage.setItem('ai-study-assistant-settings', '{not-json')
     runThemeInit()
 
     expect(document.documentElement.dataset.theme).toBe('light')

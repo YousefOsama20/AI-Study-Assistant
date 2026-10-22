@@ -48,7 +48,7 @@ interface ElectronBridge {
 }
 
 interface Window {
-  minirag?: ElectronBridge
+  aiStudyAssistant?: ElectronBridge
 }
 
 declare module '*.svg' {

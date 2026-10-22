@@ -1,8 +1,8 @@
-# Project Memory: Mini-RAG Study Assistant
+# Project Memory: AI-Study-Assistant
 
 ## Overview
 
-Mini-RAG was extended from a minimal RAG API into a local-first Windows desktop
+AI-Study-Assistant was extended from a minimal RAG API into a local-first Windows desktop
 study assistant. Users create projects, upload PDFs, process them into
 page-aware chunks and vectors, search semantically, and ask cited questions.
 
@@ -28,7 +28,7 @@ page-aware chunks and vectors, search semantically, and ask cited questions.
 - Runtime hardening:
   - Packaged mode binds `127.0.0.1`, disables reload, enables migrations.
   - `helpers/migrations.py` runs Alembic programmatically for frozen builds.
-  - `MINIRAG_DATA_DIR` redirects uploads/previews for read-only install dirs.
+  - `AISTUDY_DATA_DIR` redirects uploads/previews for read-only install dirs.
   - CORS is disabled unless `CORS_ALLOW_ORIGINS` lists explicit origins.
 
 ### Frontend (`frontend/`)
@@ -52,7 +52,7 @@ page-aware chunks and vectors, search semantically, and ask cited questions.
   - New windows denied; valid http(s) links open externally.
   - Permission requests denied.
   - Single-instance lock and `userData` set to
-    `%APPDATA%\Mini-RAG Study Assistant`.
+    `%APPDATA%\AI-Study-Assistant`.
 
 ### Electron process (`frontend/electron/`)
 
@@ -63,7 +63,7 @@ page-aware chunks and vectors, search semantically, and ask cited questions.
   3-attempt cap, graceful stop, log file.
 - `api-rules.ts`: route allowlist, timeouts, request/upload size limits.
 - `security.ts`: web preferences, allowed navigation, external URL checks.
-- `preload.ts`: typed `window.minirag` bridge.
+- `preload.ts`: typed `window.aiStudyAssistant` bridge.
 - Paths: `FRONTEND_ROOT = path.join(__dirname, '..', '..')` resolves to
   `frontend/` in development and inside `app.asar` when packaged;
   `REPO_ROOT` is used only for development backend startup.
@@ -80,7 +80,7 @@ page-aware chunks and vectors, search semantically, and ask cited questions.
 - `frontend/scripts/backend.spec`: PyInstaller one-file backend, console off,
   collects app packages and Alembic files.
 - `frontend/scripts/build-backend.ps1`: installs requirements +
-  `pyinstaller==6.11.1`, outputs `build/backend/MiniRAGBackend.exe`.
+  `pyinstaller==6.11.1`, outputs `build/backend/AIStudyAssistantBackend.exe`.
 - `frontend/scripts/build-installer.ps1`: npm install if needed, typecheck,
   tests, backend build, renderer/electron builds, electron-builder NSIS.
 - `frontend/scripts/backend-dev.ps1`: dev backend on `127.0.0.1:5000` with
@@ -93,10 +93,10 @@ page-aware chunks and vectors, search semantically, and ask cited questions.
 ### Environment
 
 Backend settings come from `src/.env` in development and from
-`%APPDATA%\Mini-RAG Study Assistant\.env` in the packaged app (parsed by
+`%APPDATA%\AI-Study-Assistant\.env` in the packaged app (parsed by
 BackendManager and injected into the child process). The packaged app can also
 read allowlisted non-secret values from
-`%APPDATA%\Mini-RAG Study Assistant\config.json`; `.env` takes precedence,
+`%APPDATA%\AI-Study-Assistant\config.json`; `.env` takes precedence,
 unknown keys and secrets are ignored. Neither file is bundled.
 
 Required settings:
@@ -113,10 +113,10 @@ host in both development and packaged modes.
 ### Storage
 
 - Default data root: `src/assets`; packaged override:
-  `%APPDATA%\Mini-RAG Study Assistant\data`.
+  `%APPDATA%\AI-Study-Assistant\data`.
 - Files: `assets/files/{project_id}/`.
 - Previews: `assets/files/{project_id}/previews/`.
-- Packaged backend log: `%APPDATA%\Mini-RAG Study Assistant\backend.log`.
+- Packaged backend log: `%APPDATA%\AI-Study-Assistant\backend.log`.
 - Vector tables: `collection_{embedding_size}_{project_id}`.
 
 ## Verification State
@@ -205,7 +205,7 @@ src/
   routes/{base,project,document,data,nlp,system}.py
   controllers/{DataController,ProcessController,NLPController,projectController}.py
   helpers/{config,migrations}.py
-  models/db_schemes/minirag/alembic/**
+  models/db_schemes/ai_study_assistant/alembic/**
   models/enums/ProcessingStatus.py
 docker/docker-compose.yml
 README.md

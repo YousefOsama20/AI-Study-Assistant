@@ -1,4 +1,4 @@
-# Troubleshooting Guide - Mini-RAG Study Assistant
+# Troubleshooting Guide - AI-Study-Assistant
 
 ## Quick Diagnostics
 
@@ -12,14 +12,14 @@ docker ps
 docker logs pgvector --tail 100
 
 # Packaged app logs (Windows)
-Get-Content "$env:APPDATA\Mini-RAG Study Assistant\backend.log" -Tail 100
+Get-Content "$env:APPDATA\AI-Study-Assistant\backend.log" -Tail 100
 ```
 
 | Check | Expected |
 |-------|----------|
 | `GET /api/v1/health` | `200` and `"status": "ok"` |
 | `/api/v1/health` degraded | `503` with `database.connected` or `vectordb.connected` false |
-| `GET /api/v1/` | `{"message":"mini-RAG","version":"0.1"}` |
+| `GET /api/v1/` | `{"message":"AI-Study-Assistant","version":"0.1"}` |
 | `GET /docs` | Swagger UI loads |
 
 ## Backend Startup
@@ -54,7 +54,7 @@ docker exec -it pgvector pg_isready -U postgres
 Create the database if it does not exist:
 
 ```bash
-docker exec -it pgvector psql -U postgres -c "CREATE DATABASE minirag;"
+docker exec -it pgvector psql -U postgres -c "CREATE DATABASE ai_study_assistant;"
 ```
 
 ### pgvector extension missing
@@ -62,14 +62,14 @@ docker exec -it pgvector psql -U postgres -c "CREATE DATABASE minirag;"
 Error: `type "vector" does not exist`
 
 ```sql
-\c minirag
+\c ai_study_assistant
 CREATE EXTENSION IF NOT EXISTS vector;
 ```
 
 ### Migrations not applied
 
 ```bash
-cd src/models/db_schemes/minirag
+cd src/models/db_schemes/ai_study_assistant
 alembic upgrade head
 ```
 
@@ -193,14 +193,14 @@ database. Refreshing or starting a new chat clears it.
 python --version
 ```
 
-2. Set `MINIRAG_PYTHON` to the full interpreter path if needed.
+2. Set `AISTUDY_PYTHON` to the full interpreter path if needed.
 3. For the installed app, check:
 
 ```powershell
-Get-Content "$env:APPDATA\Mini-RAG Study Assistant\backend.log" -Tail 100
+Get-Content "$env:APPDATA\AI-Study-Assistant\backend.log" -Tail 100
 ```
 
-4. Confirm `%APPDATA%\Mini-RAG Study Assistant\.env` exists with valid provider
+4. Confirm `%APPDATA%\AI-Study-Assistant\.env` exists with valid provider
    keys, and that `.env` or `config.json` has the correct PostgreSQL settings.
 5. Confirm PostgreSQL is running and migrations have been applied.
 
@@ -225,7 +225,7 @@ npm run backend:build
 npm run dist:win
 ```
 
-Confirm `frontend\build\backend\MiniRAGBackend.exe` exists before
+Confirm `frontend\build\backend\AIStudyAssistantBackend.exe` exists before
 electron-builder runs.
 
 ### Blank window or renderer load failure
@@ -265,10 +265,10 @@ Change the host side of the mapping if needed, then update `src/.env`.
 
 ```bash
 # Backup
-docker exec pgvector pg_dump -U postgres minirag > backup.sql
+docker exec pgvector pg_dump -U postgres ai_study_assistant > backup.sql
 
 # Restore
-docker exec -i pgvector psql -U postgres minirag < backup.sql
+docker exec -i pgvector psql -U postgres ai_study_assistant < backup.sql
 
 # Volumes persist across restarts
 docker compose down     # keeps data
@@ -330,8 +330,8 @@ Set `VECTOR_DB_BACKEND=QDRANT` and configure a reachable Qdrant instance. The
 default and tested path is PGVector.
 
 **How do I back up study materials?**
-Back up the PostgreSQL `minirag` database and the data directory
-(`%APPDATA%\Mini-RAG Study Assistant\data` for the installed app) together.
+Back up the PostgreSQL `ai_study_assistant` database and the data directory
+(`%APPDATA%\AI-Study-Assistant\data` for the installed app) together.
 
 **Why do citations show "Page N/A"?**
 The chunk has no page metadata. Reprocess the document with the current version

@@ -11,7 +11,7 @@ export function shouldDisableGpu(options: GpuEnvironment = {}): boolean {
   if (platform !== 'linux') return false
 
   const env = options.env ?? process.env
-  if (env.MINIRAG_ENABLE_GPU === '1') return false
+  if (env.AISTUDY_ENABLE_GPU === '1') return false
 
   const release = (options.osRelease ?? os.release()).toLowerCase()
   return Boolean(env.WSL_DISTRO_NAME) || release.includes('microsoft')

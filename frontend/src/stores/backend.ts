@@ -32,7 +32,7 @@ export const useBackendStore = create<BackendState>()((set, get) => ({
   data: null,
   systemInfo: null,
   systemInfoError: null,
-  processState: typeof window !== 'undefined' && window.minirag ? 'starting' : 'unsupported',
+  processState: typeof window !== 'undefined' && window.aiStudyAssistant ? 'starting' : 'unsupported',
   processError: null,
   restarting: false,
   lastCheckedAt: null,
@@ -68,12 +68,12 @@ export const useBackendStore = create<BackendState>()((set, get) => ({
   },
 
   refreshProcessState: async () => {
-    if (!window.minirag) {
+    if (!window.aiStudyAssistant) {
       set({ processState: 'unsupported', processError: null })
       return
     }
     try {
-      const status = await window.minirag.getBackendStatus()
+      const status = await window.aiStudyAssistant.getBackendStatus()
       set({ processState: status.state, processError: status.error })
     } catch {
       set({ processState: 'failed', processError: 'Status query failed' })
@@ -81,10 +81,10 @@ export const useBackendStore = create<BackendState>()((set, get) => ({
   },
 
   restart: async () => {
-    if (!window.minirag) return false
+    if (!window.aiStudyAssistant) return false
     set({ restarting: true })
     try {
-      const result = await window.minirag.restartBackend()
+      const result = await window.aiStudyAssistant.restartBackend()
       set({ restarting: false })
       if (result.ok) {
         await get().check()

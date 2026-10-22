@@ -1,4 +1,4 @@
-# Mini-RAG Study Assistant
+# AI-Study-Assistant
 
 A local-first desktop study assistant that turns your PDFs into a searchable,
 citable knowledge base. Upload course material, process it, search it
@@ -61,7 +61,7 @@ POSTGRES_USERNAME="postgres"
 POSTGRES_PASSWORD="your-password"
 POSTGRES_HOST="localhost"
 POSTGRES_PORT=5432
-POSTGRES_MAIN_DATABASE="minirag"
+POSTGRES_MAIN_DATABASE="ai_study_assistant"
 
 GENERATION_BACKEND="OPENAI"
 EMBEDDING_BACKEND="COHERE"
@@ -102,8 +102,8 @@ The database is exposed on host port `5400`. Create the application database
 and enable pgvector:
 
 ```bash
-docker exec -it pgvector psql -U postgres -c "CREATE DATABASE minirag;"
-docker exec -it pgvector psql -U postgres -d minirag -c "CREATE EXTENSION IF NOT EXISTS vector;"
+docker exec -it pgvector psql -U postgres -c "CREATE DATABASE ai_study_assistant;"
+docker exec -it pgvector psql -U postgres -d ai_study_assistant -c "CREATE EXTENSION IF NOT EXISTS vector;"
 ```
 
 Point `src/.env` at it:
@@ -113,7 +113,7 @@ POSTGRES_USERNAME="postgres"
 POSTGRES_PASSWORD="the password from docker/.env"
 POSTGRES_HOST="127.0.0.1"
 POSTGRES_PORT=5400
-POSTGRES_MAIN_DATABASE="minirag"
+POSTGRES_MAIN_DATABASE="ai_study_assistant"
 ```
 
 Then follow the backend steps below and run the API on the host.
@@ -133,7 +133,7 @@ pip install -r requirements.txt
 2. Back up the database, then apply migrations from the repository root:
 
 ```bash
-cd src/models/db_schemes/minirag
+cd src/models/db_schemes/ai_study_assistant
 alembic upgrade head
 ```
 
@@ -165,7 +165,7 @@ npm run electron:dev
 `npm run electron:dev` builds the Electron main/preload code, starts the Vite
 dev server, and opens Electron. Electron starts and supervises its own backend
 process using `python` (Windows) or `python3` (Linux/macOS); set
-`MINIRAG_PYTHON` to use a specific interpreter. Do not start a second backend
+`AISTUDY_PYTHON` to use a specific interpreter. Do not start a second backend
 on the same port.
 
 To develop only the renderer in a browser, start the backend separately:
@@ -211,7 +211,7 @@ builds the PyInstaller backend, builds the renderer and Electron processes, and
 runs electron-builder. The installer is written to:
 
 ```
-frontend\dist\Mini-RAG Study Assistant Setup 1.0.0.exe
+frontend\dist\AI-Study-Assistant Setup 1.0.0.exe
 ```
 
 To run the stages separately:
@@ -219,7 +219,7 @@ To run the stages separately:
 ```powershell
 cd frontend
 npm install
-npm run backend:build     # build\backend\MiniRAGBackend.exe
+npm run backend:build     # build\backend\AIStudyAssistantBackend.exe
 npm run dist:win          # frontend\dist\*.exe
 ```
 
@@ -231,15 +231,15 @@ PostgreSQL, pgvector, provider keys, or a `.env` file. Before first launch,
 install PostgreSQL + pgvector and create:
 
 ```
-%APPDATA%\Mini-RAG Study Assistant\.env
+%APPDATA%\AI-Study-Assistant\.env
 ```
 
 Use `src/.env.example` as the template. Non-secret settings may also be placed
-in `%APPDATA%\Mini-RAG Study Assistant\config.json`; values in `.env` take
+in `%APPDATA%\AI-Study-Assistant\config.json`; values in `.env` take
 precedence. Unknown keys, provider keys, and other secrets in `config.json` are
 ignored, so keep secrets in `.env`. Packaged data defaults to
-`%APPDATA%\Mini-RAG Study Assistant\data`, and backend logs are written to
-`%APPDATA%\Mini-RAG Study Assistant\backend.log`.
+`%APPDATA%\AI-Study-Assistant\data`, and backend logs are written to
+`%APPDATA%\AI-Study-Assistant\backend.log`.
 
 The build scripts target Windows. Cross-building the NSIS installer and
 PyInstaller executable from Linux is not supported by this repository.

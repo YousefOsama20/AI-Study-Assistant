@@ -56,7 +56,7 @@ export function SettingsPage() {
   }, [])
 
   const canRestart =
-    typeof window !== 'undefined' && Boolean(window.minirag)
+    typeof window !== 'undefined' && Boolean(window.aiStudyAssistant)
 
   const healthLabel =
     health === 'ok'

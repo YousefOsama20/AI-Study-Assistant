@@ -87,8 +87,8 @@ export function PreviewModal({
 
   const openOriginal = () => {
     if (!document) return
-    if (window.minirag) {
-      void window.minirag.openOriginalPdf({
+    if (window.aiStudyAssistant) {
+      void window.aiStudyAssistant.openOriginalPdf({
         projectId,
         documentId: document.document_id,
       })
