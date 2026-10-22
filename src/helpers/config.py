@@ -1,11 +1,11 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from typing import List
+from pydantic import field_validator
+from typing import List, Optional
 
 class Settings(BaseSettings):
 
     APP_NAME: str  
     APP_VERSION: str
-    OPENAI_API_KEY: str
 
     FILE_UPLOAD_TYPES: list
     FILE_MAX_SIZE: int
@@ -20,47 +20,67 @@ class Settings(BaseSettings):
     GENERATION_BACKEND: str
     EMBEDDING_BACKEND: str
 
-    OPENAI_API_KEY: str = None
-    OPENAI_API_URL: str = None
-    COHERE_API_KEY: str = None
-    GEMINI_API_KEY: str = None
+    OPENAI_API_KEY: Optional[str] = None
+    OPENAI_API_URL: Optional[str] = None
+    COHERE_API_KEY: Optional[str] = None
+    GEMINI_API_KEY: Optional[str] = None
 
-    GENERATION_MODEL_ID_LITERAL: List = None
-    GENERATION_MODEL_ID: str = None
-    EMBEDDING_MODEL_ID: str = None
-    EMBEDDING_MODEL_SIZE: int = None
-    INPUT_DAFAULT_MAX_CHARACTERS: int = None
-    GENERATION_DAFAULT_MAX_TOKENS: int = None
-    GENERATION_DAFAULT_TEMPERATURE: float = None
+    GENERATION_MODEL_ID_LITERAL: Optional[List] = None
+    GENERATION_MODEL_ID: Optional[str] = None
+    EMBEDDING_MODEL_ID: Optional[str] = None
+    EMBEDDING_MODEL_SIZE: Optional[int] = None
+    INPUT_DAFAULT_MAX_CHARACTERS: Optional[int] = None
+    GENERATION_DAFAULT_MAX_TOKENS: Optional[int] = None
+    GENERATION_DAFAULT_TEMPERATURE: Optional[float] = None
     
-    VECTOR_DB_BACKEND_LITERAL: List = None
+    VECTOR_DB_BACKEND_LITERAL: Optional[List] = None
     VECTOR_DB_BACKEND: str
     VECTOR_DB_PATH: str
     VECTOR_DB_DISTANCE_METHOD: str
-    VECTOR_DB_PGVEC_INDEX_THRESHOLD: int
+    VECTOR_DB_PGVEC_INDEX_THRESHOLD: int = 100
 
     # Preview settings
-    PREVIEW_DPI: int = None
-    PREVIEW_IMAGE_FORMAT: str = None
-    MAX_PREVIEW_PAGES: int = None
+    PREVIEW_DPI: Optional[int] = None
+    PREVIEW_IMAGE_FORMAT: Optional[str] = None
+    MAX_PREVIEW_PAGES: Optional[int] = None
     
     # Chunk defaults
-    CHUNK_SIZE_DEFAULT: int = None
-    CHUNK_OVERLAP_DEFAULT: int = None
+    CHUNK_SIZE_DEFAULT: Optional[int] = None
+    CHUNK_OVERLAP_DEFAULT: Optional[int] = None
 
-    PRIMARY_LANG: str
-    DEFAULT_LANG: str
+    PRIMARY_LANG: str = "ar"
+    DEFAULT_LANG: str = "en"
 
-    HOST: str
-    PORT: int
-    RELOAD: bool
+    HOST: Optional[str] = None
+    PORT: Optional[int] = None
+    RELOAD: Optional[bool] = None
 
-    MINIRAG_PACKAGED: bool
-    MINIRAG_AUTO_MIGRATE: bool
+    MINIRAG_PACKAGED: Optional[bool] = None
+    MINIRAG_AUTO_MIGRATE: Optional[bool] = None
 
-    MINIRAG_DATA_DIR: str = None
+    MINIRAG_DATA_DIR: Optional[str] = None
 
-    CORS_ALLOW_ORIGINS: List = None
+    CORS_ALLOW_ORIGINS: Optional[str] = None
+
+    @field_validator(
+        "HOST",
+        "PORT",
+        "RELOAD",
+        "MINIRAG_PACKAGED",
+        "MINIRAG_AUTO_MIGRATE",
+        "MINIRAG_DATA_DIR",
+        "CORS_ALLOW_ORIGINS",
+        "OPENAI_API_KEY",
+        "OPENAI_API_URL",
+        "COHERE_API_KEY",
+        "GEMINI_API_KEY",
+        mode="before",
+    )
+    @classmethod
+    def empty_str_to_none(cls, v):
+        if isinstance(v, str) and v.strip() == "":
+            return None
+        return v
     
     model_config = SettingsConfigDict(env_file = ".env", extra="ignore")
 

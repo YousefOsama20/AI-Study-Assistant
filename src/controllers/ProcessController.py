@@ -7,7 +7,7 @@ from models import ProcessingEnum
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from typing import List
 from dataclasses import dataclass
-import fitz  # PyMuPDF
+import pymupdf as fitz  # PyMuPDF
 from models.enums import Document
      
 class ProcessController(BassController):
