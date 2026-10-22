@@ -1,0 +1,6 @@
+{
+  "dependencies": {
+    "log": "^6.3.2",
+    "progress": "^2.0.3"
+  }
+}
