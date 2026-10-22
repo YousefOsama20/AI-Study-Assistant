@@ -42,6 +42,7 @@ def _load_env() -> None:
 
 
 def _database_url() -> str:
+    _load_env()
     explicit = os.environ.get("ALEMBIC_DATABASE_URL") or os.environ.get("DATABASE_URL")
     if explicit:
         return explicit
