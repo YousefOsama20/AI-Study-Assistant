@@ -1,6 +1,6 @@
-appId: com.minirag.studyassistant
-productName: Mini-RAG Study Assistant
-copyright: Copyright © 2026 Mini-RAG contributors
+appId: com.aistudyassistant.app
+productName: AI-Study-Assistant
+copyright: Copyright © 2026 AI-Study-Assistant contributors
 
 directories:
   output: dist
@@ -27,7 +27,7 @@ win:
       arch:
         - x64
   icon: assets/icon.ico
-  artifactName: Mini-RAG Study Assistant Setup ${version}.${ext}
+  artifactName: AI-Study-Assistant Setup ${version}.${ext}
 
 nsis:
   oneClick: false
@@ -36,6 +36,6 @@ nsis:
   allowToChangeInstallationDirectory: true
   createDesktopShortcut: true
   createStartMenuShortcut: true
-  shortcutName: Mini-RAG Study Assistant
-  uninstallDisplayName: Mini-RAG Study Assistant
+  shortcutName: AI-Study-Assistant
+  uninstallDisplayName: AI-Study-Assistant
   deleteAppDataOnUninstall: false

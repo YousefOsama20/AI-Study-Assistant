@@ -1,8 +1,8 @@
 {
-  "name": "mini-rag-study-assistant-frontend",
+  "name": "ai-study-assistant-frontend",
   "private": true,
   "version": "1.0.0",
-  "description": "Mini-RAG Study Assistant desktop frontend (React + Electron)",
+  "description": "AI-Study-Assistant desktop frontend (React + Electron)",
   "license": "Apache-2.0",
   "type": "module",
   "main": "electron/dist/main.js",

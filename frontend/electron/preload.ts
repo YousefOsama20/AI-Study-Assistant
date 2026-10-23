@@ -33,20 +33,20 @@ interface BackendStatusPayload {
 }
 
 const INVOKE_CHANNELS = [
-  'minirag:api-request',
-  'minirag:cancel-request',
-  'minirag:upload-files',
-  'minirag:fetch-binary',
-  'minirag:get-app-version',
-  'minirag:get-backend-status',
-  'minirag:restart-backend',
-  'minirag:open-external',
-  'minirag:open-original-pdf',
+  'aiStudyAssistant:api-request',
+  'aiStudyAssistant:cancel-request',
+  'aiStudyAssistant:upload-files',
+  'aiStudyAssistant:fetch-binary',
+  'aiStudyAssistant:get-app-version',
+  'aiStudyAssistant:get-backend-status',
+  'aiStudyAssistant:restart-backend',
+  'aiStudyAssistant:open-external',
+  'aiStudyAssistant:open-original-pdf',
 ] as const
 
 const EVENT_CHANNELS = [
-  'minirag:backend-status',
-  'minirag:upload-progress',
+  'aiStudyAssistant:backend-status',
+  'aiStudyAssistant:upload-progress',
 ] as const
 
 type InvokeChannel = (typeof INVOKE_CHANNELS)[number]
@@ -56,9 +56,9 @@ function invoke(channel: InvokeChannel, ...args: unknown[]): Promise<unknown> {
   return ipcRenderer.invoke(channel, ...args)
 }
 
-contextBridge.exposeInMainWorld('minirag', {
+contextBridge.exposeInMainWorld('aiStudyAssistant', {
   apiRequest(options: ApiRequestArg) {
-    return invoke('minirag:api-request', {
+    return invoke('aiStudyAssistant:api-request', {
       method: options?.method,
       path: options?.path,
       body: options?.body,
@@ -69,7 +69,7 @@ contextBridge.exposeInMainWorld('minirag', {
   },
 
   cancelRequest(requestId: string) {
-    return invoke('minirag:cancel-request', requestId) as Promise<void>
+    return invoke('aiStudyAssistant:cancel-request', requestId) as Promise<void>
   },
 
   uploadFiles(path: string, files: UploadFileArg[], options?: UploadOptions) {
@@ -80,7 +80,7 @@ contextBridge.exposeInMainWorld('minirag', {
           data: file?.data instanceof Uint8Array ? file.data : new Uint8Array(),
         }))
       : []
-    return invoke('minirag:upload-files', path, safeFiles, {
+    return invoke('aiStudyAssistant:upload-files', path, safeFiles, {
       requestId: options?.requestId,
       timeoutMs: options?.timeoutMs,
     }) as Promise<{
@@ -91,7 +91,7 @@ contextBridge.exposeInMainWorld('minirag', {
   },
 
   async fetchBinary(path: string, timeoutMs?: number) {
-    const result = (await invoke('minirag:fetch-binary', path, timeoutMs)) as {
+    const result = (await invoke('aiStudyAssistant:fetch-binary', path, timeoutMs)) as {
       status: number
       ok: boolean
       data: Uint8Array | ArrayBuffer
@@ -107,36 +107,36 @@ contextBridge.exposeInMainWorld('minirag', {
   },
 
   getAppVersion() {
-    return invoke('minirag:get-app-version') as Promise<string>
+    return invoke('aiStudyAssistant:get-app-version') as Promise<string>
   },
 
   getBackendStatus() {
-    return invoke('minirag:get-backend-status') as Promise<BackendStatusPayload>
+    return invoke('aiStudyAssistant:get-backend-status') as Promise<BackendStatusPayload>
   },
 
   restartBackend() {
-    return invoke('minirag:restart-backend') as Promise<{
+    return invoke('aiStudyAssistant:restart-backend') as Promise<{
       ok: boolean
       error: string | null
     }>
   },
 
   openExternal(url: string) {
-    return invoke('minirag:open-external', url) as Promise<{
+    return invoke('aiStudyAssistant:open-external', url) as Promise<{
       ok: boolean
       error?: string
     }>
   },
 
   openOriginalPdf(params: { projectId: number; documentId: number }) {
-    return invoke('minirag:open-original-pdf', {
+    return invoke('aiStudyAssistant:open-original-pdf', {
       projectId: params?.projectId,
       documentId: params?.documentId,
     }) as Promise<{ ok: boolean; path?: string; error?: string }>
   },
 
   onBackendStatus(callback: (status: BackendStatusPayload) => void) {
-    const channel: EventChannel = 'minirag:backend-status'
+    const channel: EventChannel = 'aiStudyAssistant:backend-status'
     const listener = (_event: unknown, status: BackendStatusPayload) => {
       callback(status)
     }
@@ -147,7 +147,7 @@ contextBridge.exposeInMainWorld('minirag', {
   },
 
   onUploadProgress(callback: (progress: UploadProgressPayload) => void) {
-    const channel: EventChannel = 'minirag:upload-progress'
+    const channel: EventChannel = 'aiStudyAssistant:upload-progress'
     const listener = (_event: unknown, progress: UploadProgressPayload) => {
       callback(progress)
     }

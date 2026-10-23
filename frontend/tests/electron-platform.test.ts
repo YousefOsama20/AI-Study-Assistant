@@ -42,12 +42,12 @@ describe('shouldDisableGpu', () => {
     ).toBe(true)
   })
 
-  it('allows WSL users to opt back in with MINIRAG_ENABLE_GPU=1', () => {
+  it('allows WSL users to opt back in with AISTUDY_ENABLE_GPU=1', () => {
     expect(
       shouldDisableGpu({
         platform: 'linux',
         osRelease: '6.18.54.1-microsoft-standard-WSL2',
-        env: { WSL_DISTRO_NAME: 'Ubuntu', MINIRAG_ENABLE_GPU: '1' },
+        env: { WSL_DISTRO_NAME: 'Ubuntu', AISTUDY_ENABLE_GPU: '1' },
       }),
     ).toBe(false)
   })

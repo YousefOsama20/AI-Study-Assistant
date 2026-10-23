@@ -116,15 +116,15 @@ describe('preload bridge', () => {
   it('uses only allowlisted invoke channels', async () => {
     const api = bridgeApi()
     const channels = new Set([
-      'minirag:api-request',
-      'minirag:cancel-request',
-      'minirag:upload-files',
-      'minirag:fetch-binary',
-      'minirag:get-app-version',
-      'minirag:get-backend-status',
-      'minirag:restart-backend',
-      'minirag:open-external',
-      'minirag:open-original-pdf',
+      'aiStudyAssistant:api-request',
+      'aiStudyAssistant:cancel-request',
+      'aiStudyAssistant:upload-files',
+      'aiStudyAssistant:fetch-binary',
+      'aiStudyAssistant:get-app-version',
+      'aiStudyAssistant:get-backend-status',
+      'aiStudyAssistant:restart-backend',
+      'aiStudyAssistant:open-external',
+      'aiStudyAssistant:open-original-pdf',
     ])
 
     await api.apiRequest({
@@ -139,7 +139,7 @@ describe('preload bridge', () => {
       timeoutMs: 5_000,
     })
     expect(electronMock.invoke).toHaveBeenCalledWith(
-      'minirag:upload-files',
+      'aiStudyAssistant:upload-files',
       '/api/v1/data/upload/1',
       [],
       { requestId: 'upload-1', timeoutMs: 5_000 },
@@ -168,7 +168,7 @@ describe('preload bridge', () => {
 
     const unsubscribe = api.onBackendStatus(callback)
     expect(electronMock.on).toHaveBeenCalledWith(
-      'minirag:backend-status',
+      'aiStudyAssistant:backend-status',
       expect.any(Function),
     )
 
@@ -182,7 +182,7 @@ describe('preload bridge', () => {
 
     unsubscribe()
     expect(electronMock.removeListener).toHaveBeenCalledWith(
-      'minirag:backend-status',
+      'aiStudyAssistant:backend-status',
       listener,
     )
   })
@@ -193,7 +193,7 @@ describe('preload bridge', () => {
 
     const unsubscribe = api.onUploadProgress(callback)
     expect(electronMock.on).toHaveBeenCalledWith(
-      'minirag:upload-progress',
+      'aiStudyAssistant:upload-progress',
       expect.any(Function),
     )
 
@@ -207,7 +207,7 @@ describe('preload bridge', () => {
 
     unsubscribe()
     expect(electronMock.removeListener).toHaveBeenCalledWith(
-      'minirag:upload-progress',
+      'aiStudyAssistant:upload-progress',
       listener,
     )
   })

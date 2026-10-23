@@ -37,7 +37,7 @@ def main() -> None:
     )
     (ASSETS / "icon.svg").write_text(
         '<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" '
-        'viewBox="0 0 512 512" role="img" aria-label="Mini-RAG Study Assistant">\n'
+        'viewBox="0 0 512 512" role="img" aria-label="AI-Study-Assistant">\n'
         '  <image href="icon.png" width="512" height="512"/>\n'
         "</svg>\n",
         encoding="utf-8",

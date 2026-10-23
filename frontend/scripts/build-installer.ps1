@@ -34,7 +34,7 @@ try {
         & (Join-Path $PSScriptRoot "build-backend.ps1") -Python $Python
     }
 
-    $BackendExe = Join-Path $Frontend "build\backend\MiniRAGBackend.exe"
+    $BackendExe = Join-Path $Frontend "build\backend\AIStudyAssistantBackend.exe"
     if (-not (Test-Path $BackendExe)) {
         throw "Backend executable not found: $BackendExe"
     }
@@ -49,7 +49,7 @@ try {
     if ($LASTEXITCODE -ne 0) { throw "NSIS installer build failed" }
 
     $Version = (Get-Content "package.json" -Raw | ConvertFrom-Json).version
-    Write-Host "Installer written to frontend\dist\Mini-RAG Study Assistant Setup $Version.exe"
+    Write-Host "Installer written to frontend\dist\AI-Study-Assistant Setup $Version.exe"
 } finally {
     popd
 }

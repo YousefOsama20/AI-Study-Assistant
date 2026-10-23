@@ -1,7 +1,7 @@
 // English dictionary — the source of truth for translation keys.
 // Arabic (ar.ts) is typechecked against this dictionary's keys.
 export const en = {
-  'app.name': 'Mini-RAG Study Assistant',
+  'app.name': 'AI-Study-Assistant',
   'app.tagline': 'Local research assistant for your documents',
 
   'common.loading': 'Loading…',
@@ -287,7 +287,7 @@ export const en = {
   'about.title': 'About',
   'about.version': 'Version {version}',
   'about.description':
-    'Mini-RAG Study Assistant is a local-first desktop app for uploading PDFs, building a vector search index, and asking questions grounded in your documents.',
+    'AI-Study-Assistant is a local-first desktop app for uploading PDFs, building a vector search index, and asking questions grounded in your documents.',
   'about.stack': 'Built with',
   'about.backendStatus': 'Backend status',
   'about.license': 'License',

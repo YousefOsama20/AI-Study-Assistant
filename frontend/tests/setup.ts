@@ -80,5 +80,5 @@ afterEach(() => {
   cleanup()
   window.localStorage.clear()
   vi.unstubAllGlobals()
-  delete window.minirag
+  delete window.aiStudyAssistant
 })

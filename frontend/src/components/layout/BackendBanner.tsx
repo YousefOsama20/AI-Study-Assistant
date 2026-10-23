@@ -23,7 +23,7 @@ export function BackendBanner() {
     const timer = window.setInterval(() => {
       void check()
     }, POLL_MS)
-    const unsubscribe = window.minirag?.onBackendStatus?.((status) => {
+    const unsubscribe = window.aiStudyAssistant?.onBackendStatus?.((status) => {
       if (status.state === 'running' || status.state === 'failed') {
         void check()
       }

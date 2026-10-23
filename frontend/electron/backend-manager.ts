@@ -71,8 +71,8 @@ function delay(ms: number): Promise<void> {
 const ALLOWED_CONFIG_KEYS = new Set([
   'PORT',
   'RELOAD',
-  'MINIRAG_AUTO_MIGRATE',
-  'MINIRAG_DATA_DIR',
+  'AISTUDY_AUTO_MIGRATE',
+  'AISTUDY_DATA_DIR',
   'CORS_ALLOW_ORIGINS',
   'FILE_MAX_SIZE',
   'FILE_DEFAULT_CHUNK_SIZE',
@@ -182,10 +182,10 @@ export class BackendManager extends EventEmitter {
         HOST: '127.0.0.1',
         PORT: String(port),
         RELOAD: '0',
-        MINIRAG_PACKAGED: this.options.packaged ? '1' : '0',
-        MINIRAG_AUTO_MIGRATE: fileSettings.MINIRAG_AUTO_MIGRATE ?? '1',
-        MINIRAG_DATA_DIR:
-          fileSettings.MINIRAG_DATA_DIR ??
+        AISTUDY_PACKAGED: this.options.packaged ? '1' : '0',
+        AISTUDY_AUTO_MIGRATE: fileSettings.AISTUDY_AUTO_MIGRATE ?? '1',
+        AISTUDY_DATA_DIR:
+          fileSettings.AISTUDY_DATA_DIR ??
           path.join(this.options.userDataDir, 'data'),
       }
 
@@ -333,7 +333,7 @@ export class BackendManager extends EventEmitter {
 
   private resolveCommand(): { command: string; args: string[]; cwd: string } {
     if (this.options.packaged) {
-      const exeName = process.platform === 'win32' ? 'MiniRAGBackend.exe' : 'MiniRAGBackend'
+      const exeName = process.platform === 'win32' ? 'AIStudyAssistantBackend.exe' : 'AIStudyAssistantBackend'
       const exePath = path.join(this.options.resourcesPath, 'backend', exeName)
       if (!fs.existsSync(exePath)) {
         throw new Error(`Backend executable not found at ${exePath}`)
@@ -341,7 +341,7 @@ export class BackendManager extends EventEmitter {
       return { command: exePath, args: [], cwd: path.dirname(exePath) }
     }
     const python =
-      process.env.MINIRAG_PYTHON ?? (process.platform === 'win32' ? 'python' : 'python3')
+      process.env.AISTUDY_PYTHON ?? (process.platform === 'win32' ? 'python' : 'python3')
     const mainPy = path.join(this.options.projectRoot, 'src', 'main.py')
     if (!fs.existsSync(mainPy)) {
       throw new Error(`Backend entry point not found at ${mainPy}`)

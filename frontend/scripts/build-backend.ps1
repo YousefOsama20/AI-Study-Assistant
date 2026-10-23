@@ -4,7 +4,7 @@
 
 .DESCRIPTION
     Installs Python dependencies (unless -SkipInstall is supplied) and writes
-    build\backend\MiniRAGBackend.exe, which electron-builder copies into the
+    build\backend\AIStudyAssistantBackend.exe, which electron-builder copies into the
     installer resources\backend directory.
 
 .EXAMPLE
@@ -51,7 +51,7 @@ New-Item -ItemType Directory -Force -Path $Dist | Out-Null
     $Spec
 if ($LASTEXITCODE -ne 0) { throw "PyInstaller build failed" }
 
-$Exe = Join-Path $Dist "MiniRAGBackend.exe"
+$Exe = Join-Path $Dist "AIStudyAssistantBackend.exe"
 if (-not (Test-Path $Exe)) {
     throw "Expected backend executable was not created: $Exe"
 }

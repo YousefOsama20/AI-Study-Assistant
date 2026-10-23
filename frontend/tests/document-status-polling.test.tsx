@@ -8,7 +8,7 @@ import type { DocumentItem, ProcessingStatus, SystemInfoResponse } from '@/types
 import { renderAt, renderWithProviders } from './helpers'
 
 const systemInfo: SystemInfoResponse = {
-  app_name: 'Mini-RAG',
+  app_name: 'AI-Study-Assistant',
   version: '1.0.0',
   upload: { max_size_mb: 10, allowed_types: ['application/pdf'] },
   providers: {

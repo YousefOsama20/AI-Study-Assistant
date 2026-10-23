@@ -1,6 +1,6 @@
 # Windows Installation Guide
 
-This guide covers running Mini-RAG Study Assistant on Windows in development,
+This guide covers running AI-Study-Assistant on Windows in development,
 building the installer, and configuring the installed app.
 
 ## Prerequisites
@@ -10,7 +10,7 @@ building the installer, and configuring the installed app.
 - **PostgreSQL 15+ with pgvector**
   - PostgreSQL: https://www.postgresql.org/download/windows/
   - pgvector Windows builds: https://github.com/pgvector/pgvector
-  - Enable the extension in the `minirag` database:
+  - Enable the extension in the `ai_study_assistant` database:
     ```sql
     CREATE EXTENSION IF NOT EXISTS vector;
     ```
@@ -67,8 +67,8 @@ docker compose -f docker-compose.yml up -d pgvector
 4. Create the application database and enable pgvector:
 
 ```powershell
-docker exec -it pgvector psql -U postgres -c "CREATE DATABASE minirag;"
-docker exec -it pgvector psql -U postgres -d minirag -c "CREATE EXTENSION IF NOT EXISTS vector;"
+docker exec -it pgvector psql -U postgres -c "CREATE DATABASE ai_study_assistant;"
+docker exec -it pgvector psql -U postgres -d ai_study_assistant -c "CREATE EXTENSION IF NOT EXISTS vector;"
 ```
 
 5. Configure `src\.env` with port `5400`:
@@ -78,7 +78,7 @@ POSTGRES_USERNAME=postgres
 POSTGRES_PASSWORD=your_secure_password
 POSTGRES_HOST=127.0.0.1
 POSTGRES_PORT=5400
-POSTGRES_MAIN_DATABASE=minirag
+POSTGRES_MAIN_DATABASE=ai_study_assistant
 
 GENERATION_BACKEND=OPENAI
 EMBEDDING_BACKEND=COHERE
@@ -94,11 +94,11 @@ otherwise.
 
 ### 1. Create the database
 
-Create a `minirag` database and enable pgvector:
+Create a `ai_study_assistant` database and enable pgvector:
 
 ```sql
-CREATE DATABASE minirag;
-\c minirag
+CREATE DATABASE ai_study_assistant;
+\c ai_study_assistant
 CREATE EXTENSION IF NOT EXISTS vector;
 ```
 
@@ -128,7 +128,7 @@ POSTGRES_USERNAME=postgres
 POSTGRES_PASSWORD=your_password
 POSTGRES_HOST=localhost
 POSTGRES_PORT=5432
-POSTGRES_MAIN_DATABASE=minirag
+POSTGRES_MAIN_DATABASE=ai_study_assistant
 
 GENERATION_BACKEND=OPENAI
 EMBEDDING_BACKEND=COHERE
@@ -144,7 +144,7 @@ Keep `EMBEDDING_MODEL_SIZE` aligned with `EMBEDDING_MODEL_ID`.
 Back up the database first if it already contains data, then run:
 
 ```powershell
-cd src\models\db_schemes\minirag
+cd src\models\db_schemes\ai_study_assistant
 alembic upgrade head
 ```
 
@@ -178,7 +178,7 @@ npm run electron:dev
 
 `npm run electron:dev` builds the Electron main/preload code, starts Vite, and
 opens Electron. Electron starts and supervises the backend itself; do not run a
-second backend on the same port. Set `MINIRAG_PYTHON` if Python is not on
+second backend on the same port. Set `AISTUDY_PYTHON` if Python is not on
 `PATH` under the expected name.
 
 To develop only the renderer in a browser, start the backend in one terminal and
@@ -204,7 +204,7 @@ The script performs:
 Output:
 
 ```
-frontend\dist\Mini-RAG Study Assistant Setup 1.0.0.exe
+frontend\dist\AI-Study-Assistant Setup 1.0.0.exe
 ```
 
 Manual equivalent:
@@ -223,7 +223,7 @@ the backend executable. Run `backend:build` first, or run
 ### What is bundled
 
 - Electron main process, preload script, and renderer (`app.asar`).
-- `MiniRAGBackend.exe` under `resources\backend`.
+- `AIStudyAssistantBackend.exe` under `resources\backend`.
 - Application and installer icons from `frontend\assets`.
 
 ### What is not bundled
@@ -238,8 +238,8 @@ the backend executable. Run `backend:build` first, or run
 The installed app reads configuration from:
 
 ```
-%APPDATA%\Mini-RAG Study Assistant\.env
-%APPDATA%\Mini-RAG Study Assistant\config.json
+%APPDATA%\AI-Study-Assistant\.env
+%APPDATA%\AI-Study-Assistant\config.json
 ```
 
 Create `.env` using `src\.env.example` as the template for provider keys and
@@ -253,16 +253,16 @@ Runtime files:
 
 | Item | Location |
 |------|----------|
-| Configuration | `%APPDATA%\Mini-RAG Study Assistant\.env` and `config.json` |
-| Backend log | `%APPDATA%\Mini-RAG Study Assistant\backend.log` |
-| Uploaded files, previews, local data | `%APPDATA%\Mini-RAG Study Assistant\data` |
+| Configuration | `%APPDATA%\AI-Study-Assistant\.env` and `config.json` |
+| Backend log | `%APPDATA%\AI-Study-Assistant\backend.log` |
+| Uploaded files, previews, local data | `%APPDATA%\AI-Study-Assistant\data` |
 
-Override the data location with `MINIRAG_DATA_DIR` in the same `.env` file.
+Override the data location with `AISTUDY_DATA_DIR` in the same `.env` file.
 `config.json` accepts only allowlisted non-secret scalar settings such as
 `PORT`, database connection values, model names, and `FILE_MAX_SIZE`; provider
 keys and unknown keys are ignored there. Packaged mode binds to `127.0.0.1`,
 disables reload, and runs migrations automatically unless
-`MINIRAG_AUTO_MIGRATE=0`.
+`AISTUDY_AUTO_MIGRATE=0`.
 
 ## Configuration reference
 
@@ -284,14 +284,14 @@ disables reload, and runs migrations automatically unless
 | `FILE_MAX_SIZE` | Max upload size in MB (default 10) |
 | `VECTOR_DB_BACKEND` | `PGVECTOR` (default) or `QDRANT` |
 | `PRIMARY_LANG` / `DEFAULT_LANG` | Prompt language / fallback |
-| `MINIRAG_DATA_DIR` | Data directory override |
+| `AISTUDY_DATA_DIR` | Data directory override |
 | `PORT` | Fixed backend port; omit to let Electron choose one |
 
 Data locations:
 
-- Uploaded PDFs: `MINIRAG_DATA_DIR\assets\files\{project_id}`
+- Uploaded PDFs: `AISTUDY_DATA_DIR\assets\files\{project_id}`
 - Generated previews: `...\previews`
-- Database: PostgreSQL `minirag`
+- Database: PostgreSQL `ai_study_assistant`
 
 ## Troubleshooting
 
@@ -309,7 +309,7 @@ or remove `PORT` so the Electron backend manager allocates a free port.
 Installed app:
 
 ```powershell
-Get-Content "$env:APPDATA\Mini-RAG Study Assistant\backend.log" -Tail 100
+Get-Content "$env:APPDATA\AI-Study-Assistant\backend.log" -Tail 100
 ```
 
 Development: use the terminal running `python main.py`.
@@ -321,13 +321,13 @@ Development: use the terminal running `python main.py`.
 Test-NetConnection localhost -Port 5432
 
 # Inspect the database objects
-psql -U postgres -h localhost -d minirag -c "\dt"
+psql -U postgres -h localhost -d ai_study_assistant -c "\dt"
 ```
 
 ### pgvector missing
 
 ```sql
-\c minirag
+\c ai_study_assistant
 CREATE EXTENSION IF NOT EXISTS vector;
 ```
 
@@ -342,7 +342,7 @@ CREATE EXTENSION IF NOT EXISTS vector;
 
 ### Installer build fails during electron-builder
 
-- Ensure `frontend\build\backend\MiniRAGBackend.exe` exists.
+- Ensure `frontend\build\backend\AIStudyAssistantBackend.exe` exists.
 - Ensure `frontend\build\renderer\index.html` exists.
 - Delete `frontend\node_modules` and `frontend\dist`, then run `npm install`.
 - Verify `frontend\assets\icon.ico` is present (regenerate with
@@ -361,13 +361,13 @@ Or enable `LongPathsEnabled` under
 
 ```powershell
 # Backup
-pg_dump -U postgres -h localhost minirag > minirag-backup.sql
+pg_dump -U postgres -h localhost ai_study_assistant > ai_study_assistant-backup.sql
 
 # Restore
-psql -U postgres -h localhost minirag < minirag-backup.sql
+psql -U postgres -h localhost ai_study_assistant < ai_study_assistant-backup.sql
 
 # Backup uploaded documents and previews
-Copy-Item "$env:APPDATA\Mini-RAG Study Assistant\data" .\minirag-data -Recurse
+Copy-Item "$env:APPDATA\AI-Study-Assistant\data" .\ai_study_assistant-data -Recurse
 ```
 
 Back up PostgreSQL and the data directory together so document records and
@@ -375,17 +375,17 @@ files stay consistent.
 
 ## Uninstall
 
-1. Windows Settings -> Apps -> Mini-RAG Study Assistant -> Uninstall.
+1. Windows Settings -> Apps -> AI-Study-Assistant -> Uninstall.
 2. Optionally remove configuration and data:
 
 ```powershell
-Remove-Item "$env:APPDATA\Mini-RAG Study Assistant" -Recurse
+Remove-Item "$env:APPDATA\AI-Study-Assistant" -Recurse
 ```
 
 3. Optionally drop the database:
 
 ```sql
-DROP DATABASE minirag;
+DROP DATABASE ai_study_assistant;
 ```
 
 ## Support
