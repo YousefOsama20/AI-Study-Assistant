@@ -2,6 +2,7 @@ from .BassController import BassController
 from models.db_schemes import Project, DataChunk, RetrievedDocument
 from stores.llm.LLMEnums import DocumentTypeEnum
 from typing import List, Optional
+import asyncio
 import json
 
 class NLPController(BassController):
@@ -155,10 +156,16 @@ class NLPController(BassController):
 
         return search_results
      
-    async def answer_rag_question(self, project: Project, query: str, limit: int = 10, 
-                                   chat_history: List[dict] = None):
-        
+    async def answer_rag_question(self, project: Project, query: str, limit: int = None,
+                                   chat_history: List[dict] = None, language: str = None):
+
         answer, full_prompt, updated_chat_history = None, None, None
+
+        language = self.normalize_language(language)
+        answer_language = self.language_name(language)
+        limit = int(limit or self.app_setting.RAG_ANSWER_LIMIT or 10)
+        context_max_chars = int(self.app_setting.RAG_CONTEXT_MAX_CHARS or 20000)
+        chunk_max_chars = int(self.app_setting.RAG_CHUNK_MAX_CHARS or 2000)
 
         # step1: retrieve related documents
         retrieved_documents = await self.search_vector_db_collection(
@@ -169,76 +176,111 @@ class NLPController(BassController):
 
         if not retrieved_documents or len(retrieved_documents) == 0:
             return answer, full_prompt, chat_history or [], []
-        
-        # Build citations from retrieved documents
+
+        # Keep chunks until the context budget is reached. The first chunk is
+        # always kept, even when it alone exceeds the budget.
+        included_documents = []
+        used_chars = 0
+        for doc in retrieved_documents:
+            text = (doc.get("text") or "").strip()
+            if not text:
+                continue
+            text = text[:chunk_max_chars]
+            if included_documents and used_chars + len(text) > context_max_chars:
+                break
+            included_documents.append({**doc, "text": text})
+            used_chars += len(text) + 2
+
+        if not included_documents:
+            return None, None, chat_history or [], []
+
+        # Build citations from the chunks that actually enter the prompt.
         citations = []
-        for idx, doc in enumerate(retrieved_documents):
+        for doc in included_documents:
             citations.append({
                 "asset_id": doc.get("asset_id"),
                 "asset_uuid": doc.get("asset_uuid", ""),
                 "asset_name": doc.get("asset_name"),
                 "original_filename": doc.get("original_filename", ""),
                 "page_number": doc.get("page_number"),
-                "chunk_text": doc.get("text", "")[:500],  # Preview
+                "chunk_text": doc.get("text", "")[:500],
                 "score": doc.get("score", 0.0),
                 "chunk_index": doc.get("chunk_index", 0),
                 "chunk_id": doc.get("chunk_id")
             })
 
-        # step2: Construct LLM prompt with citation instructions
-        system_prompt = self.template_parser.get("rag", "system_prompt")
+        # step2: Construct LLM prompt with detailed-answer instructions
+        system_prompt = self.template_parser.get(
+            "rag", "system_prompt", language=language
+        )
 
         documents_prompts = "\n".join([
-            self.template_parser.get("rag", "document_prompt", {
+            self.template_parser.get(
+                "rag",
+                "document_prompt",
+                {
                     "doc_num": idx + 1,
-                    "chunk_text": self.generation_client.process_text(doc.get("text", "")),
+                    "chunk_text": doc.get("text", ""),
                     "asset_name": doc.get("original_filename") or doc.get("asset_name") or "",
                     "page_number": doc.get("page_number") if doc.get("page_number") is not None else "N/A"
-            })
-            for idx, doc in enumerate(retrieved_documents)
+                },
+                language=language,
+            )
+            for idx, doc in enumerate(included_documents)
         ])
 
         footer_prompt = self.template_parser.get(
             "rag",
             "footer_prompt",
             {
-                "query": query
-            }
+                "query": query,
+                "language_name": answer_language,
+            },
+            language=language,
         )
-        
+
         # step3: Construct Generation Client Prompts
         chat_history = chat_history or []
-        
-        # Build messages for generation client
+
         messages = [
             self.generation_client.construct_prompt(
                 prompt=system_prompt,
                 role=self.generation_client.enums.SYSTEM.value,
             )
         ]
-        
-        # Add conversation history (limit to last 5 exchanges),
-        # mapping raw roles to the provider's role names.
-        history_limit = 5
-        recent_history = chat_history[-history_limit:] if len(chat_history) > history_limit else chat_history
+
+        history_limit = max(1, int(self.app_setting.RAG_HISTORY_MESSAGES or 8))
+        history_max_chars = max(200, int(self.app_setting.RAG_HISTORY_MESSAGE_MAX_CHARS or 2000))
+        recent_history = chat_history[-history_limit:]
         for msg in recent_history:
             raw_role = str(msg.get("role", "user")).lower()
             if raw_role in ("assistant", "ai", "chatbot", "model"):
                 provider_role = self.generation_client.enums.ASSISTANT.value
             else:
                 provider_role = self.generation_client.enums.USER.value
+
+            content = str(msg.get("content", ""))
+            if len(content) > history_max_chars:
+                content = content[:history_max_chars] + "..."
+
             messages.append(self.generation_client.construct_prompt(
-                prompt=msg.get("content", ""),
+                prompt=content,
                 role=provider_role
             ))
 
         full_prompt = "\n\n".join([documents_prompts, footer_prompt])
 
-        # step4: Retrieve the Answer
-        answer = self.generation_client.generate_text(
+        # step4: Retrieve the detailed answer without blocking the event loop
+        answer = await asyncio.to_thread(
+            self.generation_client.generate_text,
             prompt=full_prompt,
-            chat_history=messages
+            chat_history=messages,
+            max_output_tokens=int(self.app_setting.RAG_MAX_OUTPUT_TOKENS or 1500),
+            temperature=self.app_setting.GENERATION_DAFAULT_TEMPERATURE,
         )
+
+        if answer:
+            answer = str(answer).strip()
 
         # Update chat history with current exchange
         updated_chat_history = chat_history + [

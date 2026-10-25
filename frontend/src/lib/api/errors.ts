@@ -35,6 +35,16 @@ export class ApiError extends Error {
     return this.signal === 'vectordb_search_error'
   }
 
+  /** The project has no processed chunks to summarize. */
+  isNoSummaryChunks(): boolean {
+    return this.signal === 'project_summary_no_chunks'
+  }
+
+  /** A project summary could not be generated. */
+  isSummaryError(): boolean {
+    return this.signal === 'project_summary_error'
+  }
+
   isAbort(): boolean {
     return this.kind === 'abort'
   }

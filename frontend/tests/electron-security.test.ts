@@ -265,6 +265,7 @@ describe('electron security rules', () => {
     expect(isAllowedRoute('DELETE', '/api/v1/projects/4/documents/9')).toBe(true)
     expect(isAllowedRoute('GET', '/api/v1/projects/4/documents/9/file')).toBe(true)
     expect(isAllowedRoute('GET', '/api/v1/projects')).toBe(true)
+    expect(isAllowedRoute('POST', '/api/v1/nlp/summary/4')).toBe(true)
     expect(isAllowedRoute('PUT', '/api/v1/projects/4')).toBe(false)
     expect(isAllowedRoute('GET', '/api/v1/admin')).toBe(false)
     expect(isAllowedRoute('GET', '/api/v1/projects/abc')).toBe(false)
@@ -285,6 +286,9 @@ describe('electron security rules', () => {
       ),
     ).toBe(false)
     expect(timeoutForPath('POST', '/api/v1/data/process/1')).toBe(
+      API_TIMEOUT_LONG_MS,
+    )
+    expect(timeoutForPath('POST', '/api/v1/nlp/summary/1')).toBe(
       API_TIMEOUT_LONG_MS,
     )
   })

@@ -4,11 +4,16 @@ import userEvent from '@testing-library/user-event'
 import { ChatPage } from '@/pages/Chat'
 import { useChatStore } from '@/stores/chat'
 import { apiErrorFromResponse } from '@/lib/api/errors'
-import type { AnswerResponse, SourceCitation } from '@/types/api'
+import type {
+  AnswerResponse,
+  ProjectSummaryResponse,
+  SourceCitation,
+} from '@/types/api'
 import { renderAt } from './helpers'
 
 const apiMock = vi.hoisted(() => ({
   answer: vi.fn(),
+  summarize: vi.fn(),
 }))
 
 vi.mock('@/lib/api/client', async (importOriginal) => {
@@ -38,9 +43,35 @@ function answer(overrides: Partial<AnswerResponse> = {}): AnswerResponse {
   }
 }
 
+function summary(
+  overrides: Partial<ProjectSummaryResponse> = {},
+): ProjectSummaryResponse {
+  return {
+    signal: 'project_summary_success',
+    summary: '## Overview\nA **bold** idea about entanglement.',
+    documents: [
+      {
+        document_id: 4,
+        filename: 'physics-notes.pdf',
+        page_count: 10,
+        chunk_count: 12,
+        first_page: 1,
+        last_page: 10,
+      },
+    ],
+    chunk_count: 12,
+    cached: false,
+    truncated: false,
+    language: 'en',
+    generated_at: '2026-10-23T10:00:00Z',
+    ...overrides,
+  }
+}
+
 describe('ChatPage', () => {
   beforeEach(() => {
     apiMock.answer.mockReset()
+    apiMock.summarize.mockReset()
     useChatStore.setState({ buckets: {} })
   })
 
@@ -134,5 +165,62 @@ describe('ChatPage', () => {
 
     expect(useChatStore.getState().bucket(1).messages).toHaveLength(0)
     expect(useChatStore.getState().bucket(2).messages).toHaveLength(2)
+  })
+
+  it('summarizes the project from the chat header and renders the summary', async () => {
+    apiMock.summarize.mockResolvedValue(summary())
+    const user = userEvent.setup()
+    renderChat()
+
+    await user.click(
+      screen.getAllByRole('button', { name: /summarize project/i })[0],
+    )
+
+    await waitFor(() => {
+      expect(apiMock.summarize).toHaveBeenCalledWith(7, {
+        language: 'en',
+        forceRefresh: undefined,
+      })
+    })
+
+    expect(await screen.findByText('Overview')).toBeInTheDocument()
+    expect(screen.getByText('bold')).toBeInTheDocument()
+    expect(screen.getByText('physics-notes.pdf')).toBeInTheDocument()
+    expect(screen.getByText('Project summary')).toBeInTheDocument()
+  })
+
+  it('shows a helpful message when the project has no processed chunks', async () => {
+    apiMock.summarize.mockRejectedValue(
+      apiErrorFromResponse(400, { signal: 'project_summary_no_chunks' }),
+    )
+
+    await useChatStore.getState().summarize(7, 'Summarize project', 'en')
+
+    const messages = useChatStore.getState().bucket(7).messages
+    expect(messages).toHaveLength(2)
+    expect(messages[1].noSummaryChunks).toBe(true)
+  })
+
+  it('retries a failed project summary instead of a chat answer', async () => {
+    apiMock.summarize
+      .mockRejectedValueOnce(new Error('summary backend unavailable'))
+      .mockResolvedValueOnce(summary({ summary: '## Overview\nRecovered summary.' }))
+
+    const user = userEvent.setup()
+    renderChat()
+
+    await user.click(
+      screen.getAllByRole('button', { name: /summarize project/i })[0],
+    )
+
+    expect(
+      await screen.findByText(/could not be generated/i),
+    ).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: /retry/i }))
+
+    expect(await screen.findByText('Recovered summary.')).toBeInTheDocument()
+    expect(apiMock.summarize).toHaveBeenCalledTimes(2)
+    expect(apiMock.answer).not.toHaveBeenCalled()
   })
 })

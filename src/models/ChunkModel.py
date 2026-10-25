@@ -85,6 +85,22 @@ class ChunkModel(BaseDataModel):
             result = await session.execute(stmt)
             records = result.scalars().all()
         return records
+
+    async def get_all_project_chunks_ordered(self, project_id: ObjectId):
+        async with self.db_client() as session:
+            stmt = (
+                select(DataChunk)
+                .where(DataChunk.chunk_project_id == project_id)
+                .order_by(
+                    DataChunk.chunk_asset_id,
+                    DataChunk.page_number,
+                    DataChunk.chunk_index,
+                    DataChunk.chunk_id,
+                )
+            )
+            result = await session.execute(stmt)
+            records = result.scalars().all()
+        return records
     
     async def get_total_chunks_count(self, project_id: ObjectId):
         total_count = 0

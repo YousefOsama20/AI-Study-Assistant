@@ -71,6 +71,11 @@ def should_auto_migrate() -> bool:
 async def lifespan(app: FastAPI):
     setting = get_settings()
 
+    # In-memory caches for generated project summaries. Cache entries are
+    # keyed by (project_id, language) and invalidated by a chunk signature.
+    app.summary_cache = {}
+    app.summary_locks = {}
+
     postgres_conn = f"postgresql+asyncpg://{setting.POSTGRES_USERNAME}:{setting.POSTGRES_PASSWORD}@{setting.POSTGRES_HOST}:{setting.POSTGRES_PORT}/{setting.POSTGRES_MAIN_DATABASE}"
     
     app.db_engine = create_async_engine(postgres_conn)
