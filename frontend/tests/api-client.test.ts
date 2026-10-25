@@ -36,6 +36,16 @@ describe('apiErrorFromResponse', () => {
     expect(
       apiErrorFromResponse(500, { signal: 'vectordb_search_error' }).isNoIndex(),
     ).toBe(true)
+    expect(
+      apiErrorFromResponse(400, {
+        signal: 'project_summary_no_chunks',
+      }).isNoSummaryChunks(),
+    ).toBe(true)
+    expect(
+      apiErrorFromResponse(400, {
+        signal: 'project_summary_error',
+      }).isSummaryError(),
+    ).toBe(true)
   })
 })
 

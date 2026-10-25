@@ -34,6 +34,7 @@ export const ALLOWED_ROUTES: Array<{ method: ApiMethod; pattern: RegExp }> = [
   { method: 'GET', pattern: /^\/api\/v1\/nlp\/index\/info\/\d+$/ },
   { method: 'POST', pattern: /^\/api\/v1\/nlp\/index\/search\/\d+$/ },
   { method: 'POST', pattern: /^\/api\/v1\/nlp\/index\/answer\/\d+$/ },
+  { method: 'POST', pattern: /^\/api\/v1\/nlp\/summary\/\d+$/ },
 ]
 
 export const ALLOWED_BINARY_PATTERNS: RegExp[] = [
@@ -66,7 +67,8 @@ export function timeoutForPath(method: string, pathname: string): number {
   if (
     pathname.includes('/data/upload/') ||
     pathname.includes('/data/process/') ||
-    pathname.includes('/nlp/index/push/')
+    pathname.includes('/nlp/index/push/') ||
+    pathname.includes('/nlp/summary/')
   ) {
     return API_TIMEOUT_LONG_MS
   }

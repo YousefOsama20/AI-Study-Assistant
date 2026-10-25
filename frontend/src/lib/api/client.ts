@@ -7,6 +7,7 @@ import type {
   ProcessResponse,
   Project,
   ProjectListResponse,
+  ProjectSummaryResponse,
   SearchResponse,
   SignalPayload,
   SystemInfoResponse,
@@ -205,6 +206,7 @@ export const api = {
       text: string
       limit?: number
       chatHistory?: ChatHistoryMessage[]
+      language?: string
     },
     options: RequestOptions = {},
   ): Promise<AnswerResponse> {
@@ -213,8 +215,24 @@ export const api = {
       timeoutMs: options.timeoutMs ?? 120_000,
       body: {
         text: body.text,
-        limit: body.limit ?? 5,
+        limit: body.limit ?? null,
         chat_history: body.chatHistory ?? [],
+        language: body.language ?? null,
+      },
+    })
+  },
+
+  summarize(
+    projectId: number,
+    body: { language?: string; forceRefresh?: boolean } = {},
+    options: RequestOptions = {},
+  ): Promise<ProjectSummaryResponse> {
+    return request('POST', `/nlp/summary/${projectId}`, {
+      ...options,
+      timeoutMs: options.timeoutMs ?? 600_000,
+      body: {
+        language: body.language ?? null,
+        force_refresh: body.forceRefresh ?? false,
       },
     })
   },

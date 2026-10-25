@@ -118,6 +118,26 @@ export interface AnswerResponse {
   chat_history: ChatHistoryMessage[]
 }
 
+export interface SummaryDocument {
+  document_id: number
+  filename: string
+  page_count: number | null
+  chunk_count: number
+  first_page: number | null
+  last_page: number | null
+}
+
+export interface ProjectSummaryResponse {
+  signal: string
+  summary: string
+  documents: SummaryDocument[]
+  chunk_count: number
+  cached: boolean
+  truncated: boolean
+  language: string
+  generated_at: string
+}
+
 export interface IndexInfo {
   signal: string
   collection_info: {
