@@ -12,8 +12,31 @@ class SearchRequest(BaseModel):
 
 class AnswerRequest(BaseModel):
     text: str
-    limit: Optional[int] = 5
+    limit: Optional[int] = None
     chat_history: Optional[List[dict]] = None
+    language: Optional[str] = None
+
+class SummaryRequest(BaseModel):
+    language: Optional[str] = None
+    force_refresh: Optional[bool] = False
+
+class SummaryDocument(BaseModel):
+    document_id: int
+    filename: str
+    page_count: Optional[int] = None
+    chunk_count: int
+    first_page: Optional[int] = None
+    last_page: Optional[int] = None
+
+class ProjectSummaryResponse(BaseModel):
+    signal: str
+    summary: str
+    documents: List[SummaryDocument]
+    chunk_count: int
+    cached: bool
+    truncated: bool
+    language: str
+    generated_at: str
 
 class SearchResult(BaseModel):
     text: str

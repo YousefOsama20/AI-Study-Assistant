@@ -1,10 +1,10 @@
 from fastapi import APIRouter, status, Request
 from fastapi.responses import JSONResponse
-from routes.schemes.nlp import PushRequest, SearchRequest, AnswerRequest
+from routes.schemes.nlp import PushRequest, SearchRequest, AnswerRequest, SummaryRequest
 from models.ProjectModels import ProjectModel
 from models.ChunkModel import ChunkModel
 from models.AssetModel import AssetModel
-from controllers import NLPController
+from controllers import NLPController, SummaryController
 from models import ResponseSignal
 from models.enums.AssetTypeEnum import AssetTypeEnum
 from tqdm.auto import tqdm
@@ -206,7 +206,8 @@ async def answer_rag(request: Request, project_id: int, answer_request: AnswerRe
         project=project, 
         query=answer_request.text, 
         limit=answer_request.limit,
-        chat_history=answer_request.chat_history
+        chat_history=answer_request.chat_history,
+        language=answer_request.language,
     )
    
     if not answer:
@@ -223,5 +224,79 @@ async def answer_rag(request: Request, project_id: int, answer_request: AnswerRe
             "answer": answer,
             "sources": citations,
             "chat_history": chat_history
+        }
+    )
+
+@nlp_router.post("/summary/{project_id}")
+async def summarize_project(request: Request, project_id: int, summary_request: SummaryRequest):
+
+    project_model = await ProjectModel.create_instance(
+        db_client=request.app.db_client
+    )
+
+    chunk_model = await ChunkModel.create_instance(
+        db_client=request.app.db_client
+    )
+
+    asset_model = await AssetModel.create_instance(
+        db_client=request.app.db_client
+    )
+
+    project = await project_model.get_project_or_create_one(
+        project_id=project_id
+    )
+
+    if not project:
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            content={
+                "signal": ResponseSignal.PROJECT_NOT_FOUND.value
+            }
+        )
+
+    chunks = await chunk_model.get_all_project_chunks_ordered(
+        project_id=project.project_id
+    )
+
+    if not chunks:
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            content={
+                "signal": ResponseSignal.PROJECT_SUMMARY_NO_CHUNKS.value
+            }
+        )
+
+    assets = await asset_model.get_all_project_assets(
+        asset_project_id=project.project_id,
+        asset_type=AssetTypeEnum.FILE.value,
+    )
+
+    summary_controller = SummaryController(
+        generation_client=request.app.generation_client,
+        template_parser=request.app.template_parser,
+    )
+
+    summary = await summary_controller.summarize_project(
+        project=project,
+        chunks=chunks,
+        assets=assets,
+        language=summary_request.language,
+        force_refresh=bool(summary_request.force_refresh),
+        cache=request.app.summary_cache,
+        locks=request.app.summary_locks,
+    )
+
+    if not summary:
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            content={
+                "signal": ResponseSignal.PROJECT_SUMMARY_ERROR.value
+            }
+        )
+
+    return JSONResponse(
+        content={
+            "signal": ResponseSignal.PROJECT_SUMMARY_SUCCESS.value,
+            **summary,
         }
     )
