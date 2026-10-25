@@ -34,9 +34,9 @@ class Settings(BaseSettings):
     GENERATION_DAFAULT_TEMPERATURE: Optional[float] = None
     
     VECTOR_DB_BACKEND_LITERAL: Optional[List] = None
-    VECTOR_DB_BACKEND: str
-    VECTOR_DB_PATH: str
-    VECTOR_DB_DISTANCE_METHOD: str
+    VECTOR_DB_BACKEND: str = None
+    VECTOR_DB_PATH: str = None
+    VECTOR_DB_DISTANCE_METHOD: str = None
     VECTOR_DB_PGVEC_INDEX_THRESHOLD: int = 100
 
     # Preview settings
@@ -47,6 +47,23 @@ class Settings(BaseSettings):
     # Chunk defaults
     CHUNK_SIZE_DEFAULT: Optional[int] = None
     CHUNK_OVERLAP_DEFAULT: Optional[int] = None
+
+    # RAG answer detail controls
+    RAG_ANSWER_LIMIT: int = None
+    RAG_CONTEXT_MAX_CHARS: int = None
+    RAG_CHUNK_MAX_CHARS: int = None
+    RAG_MAX_OUTPUT_TOKENS: int = None
+    RAG_HISTORY_MESSAGES: int = None
+    RAG_HISTORY_MESSAGE_MAX_CHARS: int = None
+
+    # Project summary controls
+    SUMMARY_SINGLE_PASS_MAX_CHARS: int = None
+    SUMMARY_BATCH_MAX_CHARS: int = None
+    SUMMARY_REDUCE_MAX_CHARS: int = None
+    SUMMARY_MAX_CHUNKS: int = None
+    SUMMARY_MAX_OUTPUT_TOKENS: int = None
+    SUMMARY_MAP_MAX_OUTPUT_TOKENS: int = None
+    SUMMARY_CACHE_TTL_SECONDS: int = None
 
     PRIMARY_LANG: str = "ar"
     DEFAULT_LANG: str = "en"
