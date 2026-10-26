@@ -20,6 +20,19 @@ frontend/dist/
 frontend/electron/dist/
 frontend/backend-dist/
 
-# OS/editor
+# OS / editor / Windows metadata
 .DS_Store
 Thumbs.db
+ehthumbs.db
+desktop.ini
+*:Zone.Identifier
+*.Identifier
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Logs
+*.log
+logs/
+

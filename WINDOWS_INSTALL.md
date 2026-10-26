@@ -144,7 +144,12 @@ Keep `EMBEDDING_MODEL_SIZE` aligned with `EMBEDDING_MODEL_ID`.
 Back up the database first if it already contains data, then run:
 
 ```powershell
-cd src\models\db_schemes\ai_study_assistant
+# Recommended (programmatic runner with auto-stamping):
+cd src
+python -m helpers.migrations upgrade head
+
+# Or directly with Alembic:
+cd src\models\db_schemes\minirag
 alembic upgrade head
 ```
 
