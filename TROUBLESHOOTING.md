@@ -69,7 +69,12 @@ CREATE EXTENSION IF NOT EXISTS vector;
 ### Migrations not applied
 
 ```bash
-cd src/models/db_schemes/ai_study_assistant
+# Recommended (programmatic runner with auto-stamping):
+cd src
+python -m helpers.migrations upgrade head
+
+# Or directly with Alembic CLI:
+cd src/models/db_schemes/minirag
 alembic upgrade head
 ```
 

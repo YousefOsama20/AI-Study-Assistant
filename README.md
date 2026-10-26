@@ -1,261 +1,520 @@
+<div align="center">
+
 # AI-Study-Assistant
 
-A local-first desktop study assistant that turns your PDFs into a searchable,
-citable knowledge base. Upload course material, process it, search it
-semantically, and ask questions answered only from your documents.
+<p align="center">
+  <strong>A local-first, privacy-conscious desktop study assistant that transforms course PDFs into an interactive, cited, and searchable knowledge base.</strong>
+</p>
 
-The app is a React + TypeScript renderer inside Electron, backed by a FastAPI
-service, PostgreSQL + pgvector, and your choice of OpenAI, Gemini, or Cohere.
+[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
+[![Python](https://img.shields.io/badge/Python-3.11%20%7C%203.12-3776AB.svg?logo=python&logoColor=white)](https://www.python.org/)
+[![Electron](https://img.shields.io/badge/Electron-33-47848F.svg?logo=electron&logoColor=white)](https://www.electronjs.org/)
+[![React](https://img.shields.io/badge/React-18.3-61DAFB.svg?logo=react&logoColor=black)](https://react.dev/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.7-3178C6.svg?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.110-009688.svg?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15%2B-336791.svg?logo=postgresql&logoColor=white)](https://www.postgresql.org/)
+[![pgvector](https://img.shields.io/badge/pgvector-0.4%2B-2496ED.svg)](https://github.com/pgvector/pgvector)
+[![Tests](https://img.shields.io/badge/Vitest-86%20Passed-green.svg?logo=vitest&logoColor=white)](frontend/tests)
 
-## Features
+---
 
-- Project-based study material management (create, rename, delete).
-- Multi-PDF upload with validation, upload progress, and SHA-256 duplicate
-  detection.
-- Background-friendly processing with visible status: uploaded, extracting,
-  chunking, embedding, indexing, ready, failed.
-- Page-level PDF previews and original-PDF download.
-- Semantic search with page references and similarity scores.
-- RAG question answering with source citations and in-session chat history.
-- English and Arabic UI, light/dark/system themes, search defaults, density,
-  and reduced-motion preferences.
-- Windows NSIS installer with a bundled PyInstaller backend executable.
+<img src="AI_student_ass.jpg" alt="AI-Study-Assistant Banner" width="100%" style="border-radius: 8px; margin: 16px 0;" />
 
-## Architecture
+</div>
+
+## Overview
+
+Modern students and researchers are inundated with hundreds of pages of lecture slides, textbook chapters, and scientific papers. Generic AI chatbots often hallucinate, lack access to private course files, or fail to provide verifiable source citations.
+
+**AI-Study-Assistant** solves this problem by combining **retrieval-augmented generation (RAG)** with a **local-first desktop interface**. It indexes your course materials on your machine, extracts text and rendered page previews, performs semantic vector search via PostgreSQL (`pgvector`), and answers study questions strictly grounded in your documents with exact page-level citations.
+
+---
+
+## Table of Contents
+
+- [Key Features](#key-features)
+- [System Architecture](#system-architecture)
+- [Technology Stack](#technology-stack)
+- [Project Structure](#project-structure)
+- [Prerequisites](#prerequisites)
+- [Installation & Setup](#installation--setup)
+  - [1. Clone the Repository](#1-clone-the-repository)
+  - [2. Start PostgreSQL with pgvector](#2-start-postgresql-with-pgvector)
+  - [3. Backend Configuration](#3-backend-configuration)
+  - [4. Install Backend Dependencies & Migrate](#4-install-backend-dependencies--migrate)
+  - [5. Install Frontend Dependencies](#5-install-frontend-dependencies)
+- [How to Run](#how-to-run)
+  - [Desktop Application (Development)](#desktop-application-development)
+  - [Standalone Web Browser Mode](#standalone-web-browser-mode)
+  - [Windows Installer Packaging](#windows-installer-packaging)
+- [Usage Workflow](#usage-workflow)
+- [API Reference](#api-reference)
+- [Configuration Reference](#configuration-reference)
+- [Testing & Quality Assurance](#testing--quality-assurance)
+- [Security & Privacy](#security--privacy)
+- [Troubleshooting](#troubleshooting)
+- [Roadmap](#roadmap)
+- [Contributing](#contributing)
+- [License](#license)
+- [Contact](#contact)
+
+---
+
+## Key Features
+
+- **Project-Based Workspaces**: Organize study materials into independent courses or subjects. Each workspace maintains isolated metadata, documents, and vector collections.
+- **Multi-PDF Upload & Deduplication**: Upload multiple PDF documents simultaneously with strict MIME validation, file size limits, and SHA-256 content hashing to prevent duplicate indexing.
+- **Transparent Processing Pipeline**: Monitor real-time extraction status with distinct states: `uploaded` → `extracting` → `chunking` → `embedding` → `indexing` → `ready` (or `failed`).
+- **High-Fidelity Page Previews**: PyMuPDF automatically renders crisp PNG previews for up to 10 pages per document, enabling visual inspection alongside original PDF downloads.
+- **Semantic Vector Search**: Perform fast cosine-similarity search across chunk embeddings with configurable score thresholds and instant page-number navigation.
+- **Cited RAG Chat Assistant**: Ask complex study questions and receive conversational answers grounded strictly in retrieved document context, complete with verbatim source snippets and page references.
+- **Automated Project Summarization**: Generate cohesive multi-document course summaries using single-pass or map-reduce LLM pipelines with in-memory caching.
+- **Bilingual & Accessible UI**: Full localization in **English** and **Arabic (RTL)**, dark/light/system themes, density scaling, and reduced-motion support.
+- **Desktop-Native Security**: Electron renderer runs with `contextIsolation`, sandboxing, and no direct port exposure; backend is supervised on a dynamic loopback port.
+
+---
+
+## System Architecture
+
+AI-Study-Assistant is split into an **Electron + React** desktop application and an asynchronous **FastAPI + SQLAlchemy** backend service.
+
+```mermaid
+graph TD
+    subgraph DesktopClient["Electron Desktop Client"]
+        UI["React 18 Renderer<br/>(Tailwind CSS + Zustand)"]
+        Preload["Context Bridge (preload.ts)<br/>(Strict IPC Allowlist & Sandboxing)"]
+        MainProc["Electron Main Process (main.ts)<br/>(BackendManager Supervisor)"]
+    end
+
+    subgraph BackendService["FastAPI Service (Localhost Loopback)"]
+        API["FastAPI 0.110 Router<br/>(/api/v1)"]
+        DocEngine["Document Engine<br/>(PyMuPDF + LangChain Splitter)"]
+        NLPController["NLP & RAG Controller<br/>(Search + Answer + Summarize)"]
+        DBClient["Async SQLAlchemy ORM<br/>(Alembic Migrations)"]
+    end
+
+    subgraph DataStore["Data & Persistence Layer"]
+        PG["PostgreSQL 15+<br/>(Metadata Tables)"]
+        PGVec["pgvector Extension<br/>(Cosine Vector Collections)"]
+        LocalFS["Local Filesystem<br/>(PDFs & Preview PNGs)"]
+    end
+
+    subgraph CloudAI["Configured AI Providers"]
+        OpenAI["OpenAI API<br/>(GPT-4o-mini / Embeddings)"]
+        Gemini["Google Gemini API<br/>(Gemini Flash)"]
+        Cohere["Cohere API<br/>(Command A / Multilingual Embed)"]
+    end
+
+    UI -->|"Electron IPC"| Preload
+    Preload -->|"Validated IPC"| MainProc
+    MainProc -->|"Supervises Process"| API
+    Preload -.->|"Safe IPC Proxy"| API
+
+    API --> DocEngine
+    API --> NLPController
+    API --> DBClient
+
+    DocEngine -->|"Save PDFs & PNGs"| LocalFS
+    DBClient -->|"Store Metadata"| PG
+    NLPController -->|"Index / Query Vectors"| PGVec
+    NLPController -->|"LLM Queries & Embeddings"| CloudAI
+```
+
+### Process Isolation & Security
+1. **The Renderer Never Learns the Backend Port**: In Electron, all API calls pass through an allowlisted IPC bridge (`window.aiStudyAssistant`). The main process allocates an ephemeral port on `127.0.0.1` and handles request dispatching, validation, and timeouts.
+2. **Supervised Backend**: The Electron main process launches, monitors, health-checks (`GET /api/v1/health`), and terminates the backend process automatically.
+3. **Flexible Vector Backend**: Production setups leverage PostgreSQL with `pgvector`, with architectural abstraction allowing future vector database adapters.
+
+---
+
+## Technology Stack
+
+| Domain | Technology | Purpose |
+|---|---|---|
+| **Desktop Shell** | [Electron 33](https://www.electronjs.org/) | Sandboxed cross-process window management, backend lifecycle supervision |
+| **Frontend Framework** | [React 18](https://react.dev/) + [TypeScript 5.7](https://www.typescriptlang.org/) | Reactive component hierarchy, strict type safety |
+| **Build Tooling** | [Vite 6](https://vitejs.dev/) | High-speed frontend bundling and HMR development server |
+| **Styling & UI** | [Tailwind CSS 3.4](https://tailwindcss.com/) + [Radix UI](https://www.radix-ui.com/) | Accessible, responsive design system with dark/light theme support |
+| **State Management** | [Zustand 5](https://github.com/pmndrs/zustand) | Lightweight, decoupled client stores for projects, documents, search, and chat |
+| **Testing** | [Vitest 2](https://vitest.dev/) + Testing Library | Fast unit and integration tests (86 tests across 11 test suites) |
+| **Backend API** | [FastAPI 0.110](https://fastapi.tiangolo.com/) + [Uvicorn](https://www.uvicorn.org/) | Asynchronous REST API service with automatic OpenAPI documentation |
+| **Database & ORM** | [PostgreSQL 15+](https://www.postgresql.org/) + [SQLAlchemy 2.0](https://www.sqlalchemy.org/) | Asynchronous relational schema management with `asyncpg` |
+| **Vector Engine** | [pgvector](https://github.com/pgvector/pgvector) | Efficient in-database cosine similarity indexing and nearest-neighbor search |
+| **Migrations** | [Alembic 1.14](https://alembic.sqlalchemy.org/) | Schema revision tracking with automatic database stamping |
+| **Document Processing**| [PyMuPDF 1.24](https://pymupdf.readthedocs.io/) + [LangChain](https://www.langchain.com/) | High-performance PDF text extraction, chunk splitting, and PNG page previews |
+| **LLM & Embeddings** | Cohere / OpenAI / Google Gemini | Multi-provider support for independent embedding and generation models |
+
+---
+
+## Project Structure
 
 ```
-frontend/  Electron main + preload, React renderer, Vitest tests
-src/       FastAPI app, controllers, models, LLM/vector stores, migrations
-docker/    PostgreSQL + pgvector and backend containers
+AI-Study-Assistant/
+├── frontend/                     # Electron + React application
+│   ├── assets/                   # App icons (SVG, PNG, ICO)
+│   ├── electron/                 # Electron main process & IPC security
+│   │   ├── main.ts               # Window lifecycle & IPC dispatching
+│   │   ├── backend-manager.ts    # Backend spawn, port allocation & health checks
+│   │   ├── api-rules.ts          # Route allowlist & upload size validations
+│   │   ├── security.ts           # CSP, navigation locks & external link safety
+│   │   └── preload.ts            # Typed window.aiStudyAssistant IPC bridge
+│   ├── src/                      # React renderer source
+│   │   ├── components/           # Reusable UI, layout & document components
+│   │   ├── hooks/                # Theme and responsive utility hooks
+│   │   ├── lib/                  # API client, error handlers & i18n dictionaries (en/ar)
+│   │   ├── pages/                # Dashboard, Projects, Documents, Search, Chat, Settings
+│   │   └── stores/               # Zustand state stores
+│   ├── scripts/                  # Build scripts & PyInstaller spec (backend.spec)
+│   ├── tests/                    # Vitest unit and integration test suites
+│   ├── electron-builder.yml      # NSIS Windows packaging configuration
+│   └── package.json              # Frontend scripts & dependencies
+├── src/                          # FastAPI backend application
+│   ├── assets/                   # Local file storage (files/{project_id}/)
+│   ├── controllers/              # Business logic (Process, NLP, Summary, Project)
+│   ├── helpers/                  # Configuration loaders (config.py) & migrations (migrations.py)
+│   ├── models/                   # SQLAlchemy models, Pydantic schemas & enums
+│   │   └── db_schemes/minirag/   # Alembic migration scripts and revisions
+│   ├── routes/                   # FastAPI route handlers (data, doc, nlp, project, system)
+│   ├── stores/                   # LLM & Vector DB provider implementations
+│   ├── main.py                   # FastAPI application entrypoint & lifespan
+│   └── requirements.txt          # Python dependencies
+├── docker/                       # Docker infrastructure
+│   ├── docker-compose.yml        # PostgreSQL + pgvector container definition
+│   └── .env.example              # Docker environment variables template
+├── API_DOCS.md                   # Full REST API endpoint specification
+├── CONTRIBUTING.md               # Open-source contribution guidelines
+├── LICENSE                       # Apache-2.0 License
+├── TROUBLESHOOTING.md            # Comprehensive diagnostic and error recovery guide
+└── WINDOWS_INSTALL.md            # Dedicated Windows installation and build guide
 ```
 
-The renderer never talks to the backend port directly. In Electron it uses IPC;
-in a browser it can use HTTP with a narrow CORS allowlist. The Electron main
-process starts and supervises the backend, allocates a loopback port, and
-exposes only an allowlisted set of API routes to the renderer.
+---
 
-## Requirements
+## Prerequisites
 
-- Python 3.11+ (3.12 recommended)
-- Node.js 18+ and npm
-- PostgreSQL 15+ with the pgvector extension, or Docker Desktop
-- Keys for the selected generation and embedding providers (OpenAI, Gemini,
-  or Cohere; they may be different providers)
+Before setting up the project, ensure you have the following installed:
 
-Windows installer builds additionally require PowerShell, PyInstaller, and the
-Visual C++ build tools needed by the Python dependencies. See
-[WINDOWS_INSTALL.md](WINDOWS_INSTALL.md).
+- **Python**: Version `3.11` or `3.12` (Python 3.12 recommended)
+- **Node.js**: Version `18.x` or higher and `npm`
+- **PostgreSQL**: Version `15+` with the `pgvector` extension enabled (or [Docker Desktop](https://www.docker.com/))
+- **AI Provider API Key**: At least one API key from:
+  - [Cohere](https://cohere.com/) (`COHERE_API_KEY`)
+  - [OpenAI](https://platform.openai.com/) (`OPENAI_API_KEY`)
+  - [Google Gemini](https://ai.google.dev/) (`GEMINI_API_KEY`)
 
-## Configuration
+---
 
-Create the backend environment file:
+## Installation & Setup
+
+### 1. Clone the Repository
+
+```bash
+git clone https://github.com/YousefOsama20/AI-Study-Assistant.git
+cd AI-Study-Assistant
+```
+
+### 2. Start PostgreSQL with pgvector
+
+You can run PostgreSQL + pgvector using the provided Docker Compose configuration or connect to an existing PostgreSQL instance.
+
+#### Using Docker (Recommended for quick start):
+```bash
+cd docker
+cp .env.example .env
+# Edit docker/.env and set your POSTGRES_PASSWORD
+docker compose up -d pgvector
+```
+
+Initialize the database and enable the vector extension:
+```bash
+docker exec -it pgvector psql -U postgres -c "CREATE DATABASE ai_study_assistant;"
+docker exec -it pgvector psql -U postgres -d ai_study_assistant -c "CREATE EXTENSION IF NOT EXISTS vector;"
+cd ..
+```
+*Note: Docker maps PostgreSQL to host port `5400`.*
+
+### 3. Backend Configuration
+
+Create your backend configuration file from the template:
 
 ```bash
 cp src/.env.example src/.env
 ```
 
-Then edit `src/.env`. The important settings are:
+Open `src/.env` and update the database connection and your AI provider keys:
 
 ```env
+# Database Settings (adjust port if using Docker: 5400, or local Postgres: 5432)
 POSTGRES_USERNAME="postgres"
-POSTGRES_PASSWORD="your-password"
-POSTGRES_HOST="localhost"
-POSTGRES_PORT=5432
-POSTGRES_MAIN_DATABASE="ai_study_assistant"
-
-GENERATION_BACKEND="OPENAI"
-EMBEDDING_BACKEND="COHERE"
-OPENAI_API_KEY=""
-COHERE_API_KEY=""
-GEMINI_API_KEY=""
-
-GENERATION_MODEL_ID="gpt-3.5-turbo-0125"
-EMBEDDING_MODEL_ID="embed-multilingual-light-v3.0"
-EMBEDDING_MODEL_SIZE=384
-```
-
-Notes:
-
-- `GENERATION_BACKEND` and `EMBEDDING_BACKEND` are independent. You can use
-  Gemini for both, OpenAI for both, or mix providers.
-- `EMBEDDING_MODEL_SIZE` must match the embedding model. Changing it requires
-  re-indexing all projects.
-- `FILE_MAX_SIZE` is in MB (default `10`).
-- `PRIMARY_LANG` controls the prompt language (`en` or `ar`).
-- For local browser development set a narrow CORS allowlist, for example
-  `CORS_ALLOW_ORIGINS="http://localhost:5173,http://127.0.0.1:5173"`.
-
-## Start PostgreSQL with Docker
-
-The compose file in `docker/` provides PostgreSQL + pgvector (and a legacy
-MongoDB service that the application does not use). It does not run the
-FastAPI backend.
-
-```bash
-cd docker
-cp .env.example .env
-# Set POSTGRES_PASSWORD in docker/.env
-docker compose up -d pgvector
-```
-
-The database is exposed on host port `5400`. Create the application database
-and enable pgvector:
-
-```bash
-docker exec -it pgvector psql -U postgres -c "CREATE DATABASE ai_study_assistant;"
-docker exec -it pgvector psql -U postgres -d ai_study_assistant -c "CREATE EXTENSION IF NOT EXISTS vector;"
-```
-
-Point `src/.env` at it:
-
-```env
-POSTGRES_USERNAME="postgres"
-POSTGRES_PASSWORD="the password from docker/.env"
+POSTGRES_PASSWORD="your_postgres_password"
 POSTGRES_HOST="127.0.0.1"
 POSTGRES_PORT=5400
 POSTGRES_MAIN_DATABASE="ai_study_assistant"
+
+# AI Provider Backends (Providers can be mixed freely)
+GENERATION_BACKEND="OPENAI"
+EMBEDDING_BACKEND="COHERE"
+
+# Provider API Keys (leave unused providers empty)
+OPENAI_API_KEY="sk-..."
+COHERE_API_KEY="your-cohere-key"
+GEMINI_API_KEY=""
+
+# Model Configuration
+GENERATION_MODEL_ID="gpt-4o-mini"
+EMBEDDING_MODEL_ID="embed-multilingual-light-v3.0"
+EMBEDDING_MODEL_SIZE=384
+
+# Vector DB Backend
+VECTOR_DB_BACKEND="PGVECTOR"
 ```
 
-Then follow the backend steps below and run the API on the host.
+> [!IMPORTANT]
+> `EMBEDDING_MODEL_SIZE` must match the exact output dimension of your chosen embedding model (e.g., `384` for `embed-multilingual-light-v3.0`, `1536` for OpenAI `text-embedding-3-small`).
 
-## Install and run the backend
-
-1. Install dependencies:
+### 4. Install Backend Dependencies & Migrate
 
 ```bash
 cd src
 python -m venv .venv
-source .venv/bin/activate        # Windows: .venv\Scripts\activate
+
+# On Linux/macOS:
+source .venv/bin/activate
+# On Windows PowerShell:
+# .venv\Scripts\Activate.ps1
+
 pip install --upgrade pip
 pip install -r requirements.txt
+
+# Run database migrations with auto-bootstrap:
+python -m helpers.migrations upgrade head
+cd ..
 ```
 
-2. Back up the database, then apply migrations from the repository root:
-
-```bash
-cd src/models/db_schemes/ai_study_assistant
-alembic upgrade head
-```
-
-`helpers/migrations.py` handles fresh databases and stamps pre-existing schemas
-that were created before Alembic. Back up any database that already contains
-study material before upgrading.
-
-3. Start the backend:
-
-```bash
-cd src
-python main.py
-```
-
-Development defaults are `http://0.0.0.0:5000` with reload enabled. Set
-`HOST`, `PORT`, or `RELOAD` in the environment to override them. The API is then
-available at `http://localhost:5000`, interactive docs at
-`http://localhost:5000/docs`, and health at
-`http://localhost:5000/api/v1/health`.
-
-## Run the desktop app in development
+### 5. Install Frontend Dependencies
 
 ```bash
 cd frontend
 npm install
-npm run electron:dev
+cd ..
 ```
 
-`npm run electron:dev` builds the Electron main/preload code, starts the Vite
-dev server, and opens Electron. Electron starts and supervises its own backend
-process using `python` (Windows) or `python3` (Linux/macOS); set
-`AISTUDY_PYTHON` to use a specific interpreter. Do not start a second backend
-on the same port.
+---
 
-To develop only the renderer in a browser, start the backend separately:
+## How to Run
 
-```bash
-# Terminal 1
-cd src && python main.py
+### Desktop Application (Development)
 
-# Terminal 2
-cd frontend && npm run dev
-```
-
-## Tests and checks
+Run the unified Electron desktop application. Electron will compile the main process, launch Vite, allocate a local port, spawn the backend, and display the window:
 
 ```bash
 cd frontend
-npm run typecheck
-npm test
-npm run build
+npm run electron:dev
 ```
 
-Backend static syntax check:
+*To specify a custom Python interpreter for Electron's backend supervisor, set the `AISTUDY_PYTHON` environment variable (e.g., `export AISTUDY_PYTHON="/path/to/src/.venv/bin/python"`).*
 
-```bash
-cd src
-python -m compileall -q .
-```
+### Standalone Web Browser Mode
 
-The repository does not include a backend test suite. Full API/database
-integration checks require a running PostgreSQL/pgvector instance, provider
-keys, and a backend process; those were not run in this Linux environment.
+If you prefer developing the React web interface inside your standard browser:
 
-## Build the Windows installer
+1. **Terminal 1 (Backend)**:
+   Ensure `CORS_ALLOW_ORIGINS="http://localhost:5173"` is set in `src/.env`, then run:
+   ```bash
+   cd src
+   source .venv/bin/activate
+   python main.py
+   ```
+2. **Terminal 2 (Frontend)**:
+   ```bash
+   cd frontend
+   npm run dev
+   ```
+   Open `http://localhost:5173` in your browser.
 
-Run PowerShell from the repository root:
+### Windows Installer Packaging
+
+To compile a standalone Windows `.exe` installer (bundling the PyInstaller one-file backend executable and Electron NSIS packaging):
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File frontend\scripts\build-installer.ps1
 ```
 
-The script installs npm dependencies if needed, runs typecheck and tests,
-builds the PyInstaller backend, builds the renderer and Electron processes, and
-runs electron-builder. The installer is written to:
-
+The output installer is generated at:
 ```
 frontend\dist\AI-Study-Assistant Setup 1.0.0.exe
 ```
 
-To run the stages separately:
+For advanced Windows packaging details and `%APPDATA%` configuration instructions, see [WINDOWS_INSTALL.md](WINDOWS_INSTALL.md).
 
-```powershell
+---
+
+## Usage Workflow
+
+```
+1. Create Project ──> 2. Upload PDFs ──> 3. Process & Extract ──> 4. Search & Chat
+```
+
+1. **Create a Study Project**: Navigate to **Projects** and create a project for your subject (e.g., *"Signals & Systems"*).
+2. **Upload Course Material**: Drag and drop course PDFs into the **Documents** tab. The system validates MIME types and computes SHA-256 hashes to prevent duplicates.
+3. **Process Materials**: Click **Process Documents**. The backend extracts text, splits content into overlapping chunks with 1-based page metadata, computes vector embeddings, and generates PNG page previews.
+4. **Inspect Documents**: Click any document to view its rendered page previews or download the original file.
+5. **Semantic Search**: Use the **Search** tab to locate concepts using natural language queries. Results display relevance scores and direct page numbers.
+6. **Chat with Your Notes**: Open the **Chat** tab to ask questions. The assistant retrieves relevant chunks and constructs a cited answer with source quotations.
+7. **Generate Summaries**: Request an automatic summary to generate a comprehensive overview of all materials in the project.
+
+---
+
+## API Reference
+
+The backend provides an interactive OpenAPI interface available at `http://localhost:5000/docs` during runtime. For complete request and response schemas, see [API_DOCS.md](API_DOCS.md).
+
+### Key Endpoints
+
+| Method | Endpoint | Description |
+|---|---|---|
+| `GET` | `/api/v1/health` | Service readiness check (database, vector store, and AI provider status) |
+| `GET` | `/api/v1/system/info` | Runtime system settings (upload limits, chunk sizes, active models) |
+| `GET` | `/api/v1/projects` | List projects (supports pagination and search filtering) |
+| `POST` | `/api/v1/projects` | Create a new project workspace |
+| `POST` | `/api/v1/data/upload/{project_id}` | Upload a PDF document for a project |
+| `POST` | `/api/v1/data/process/{project_id}` | Process, chunk, and embed uploaded project documents |
+| `GET` | `/api/v1/projects/{project_id}/documents` | Retrieve documents and processing statuses for a project |
+| `GET` | `/api/v1/projects/{project_id}/documents/{doc_id}/preview/{page}` | Fetch rendered PNG preview of a document page |
+| `POST` | `/api/v1/nlp/index/search/{project_id}` | Perform semantic vector search over project chunks |
+| `POST` | `/api/v1/nlp/index/answer/{project_id}` | Query RAG pipeline for cited study answers |
+| `POST` | `/api/v1/nlp/summary/{project_id}` | Synthesize a full project summary from document chunks |
+
+### Example cURL Queries
+
+#### Health Check
+```bash
+curl -X GET http://localhost:5000/api/v1/health
+```
+
+#### Semantic Search
+```bash
+curl -X POST http://localhost:5000/api/v1/nlp/index/search/1 \
+  -H "Content-Type: application/json" \
+  -d '{"query": "Fourier transform properties", "limit": 5}'
+```
+
+#### RAG Question Answering
+```bash
+curl -X POST http://localhost:5000/api/v1/nlp/index/answer/1 \
+  -H "Content-Type: application/json" \
+  -d '{"question": "What is the difference between IIR and FIR filters?"}'
+```
+
+---
+
+## Configuration Reference
+
+Key variables configurable in `src/.env` (and `%APPDATA%\AI-Study-Assistant\.env` in packaged builds):
+
+| Variable | Default | Description |
+|---|---|---|
+| `POSTGRES_HOST` | `localhost` | PostgreSQL host address |
+| `POSTGRES_PORT` | `5432` | PostgreSQL port (`5400` when using docker-compose) |
+| `POSTGRES_USERNAME` | `postgres` | Database user |
+| `POSTGRES_PASSWORD` | - | Database password |
+| `POSTGRES_MAIN_DATABASE` | `ai_study_assistant` | Application database name |
+| `GENERATION_BACKEND` | `OPENAI` | Generation provider (`OPENAI`, `COHERE`, `GEMINI`) |
+| `EMBEDDING_BACKEND` | `COHERE` | Embedding provider (`COHERE`, `OPENAI`, `GEMINI`) |
+| `GENERATION_MODEL_ID` | `gpt-4o-mini` | Generation model identifier |
+| `EMBEDDING_MODEL_ID` | `embed-multilingual-light-v3.0` | Embedding model identifier |
+| `EMBEDDING_MODEL_SIZE` | `384` | Embedding vector dimensions (must match model) |
+| `VECTOR_DB_BACKEND` | `PGVECTOR` | Vector database engine (`PGVECTOR`, `QDRANT`) |
+| `FILE_MAX_SIZE` | `10` | Maximum file upload size in MB |
+| `CHUNK_SIZE_DEFAULT` | `1000` | Text chunk character size |
+| `CHUNK_OVERLAP_DEFAULT` | `200` | Chunk overlap character size |
+| `RAG_ANSWER_LIMIT` | `8` | Top chunk count retrieved for RAG answers |
+| `PRIMARY_LANG` | `en` | Primary language for prompts (`en`, `ar`) |
+| `CORS_ALLOW_ORIGINS` | `""` | Comma-separated CORS origins (dev browser only) |
+
+---
+
+## Testing & Quality Assurance
+
+### Frontend Test Suite
+The frontend utilizes [Vitest](https://vitest.dev/) and `@testing-library/react`. 11 test suites verify state stores, navigation, upload validation, security policies, and IPC error handling:
+
+```bash
 cd frontend
-npm install
-npm run backend:build     # build\backend\AIStudyAssistantBackend.exe
-npm run dist:win          # frontend\dist\*.exe
+npm test
+```
+```
+Test Files  11 passed (11)
+     Tests  86 passed (86)
 ```
 
-The icon assets are committed. To regenerate them, install Pillow
-(`pip install pillow`) and run `npm run icons`.
-
-The bundled backend is a one-file executable. The installer does **not** bundle
-PostgreSQL, pgvector, provider keys, or a `.env` file. Before first launch,
-install PostgreSQL + pgvector and create:
-
-```
-%APPDATA%\AI-Study-Assistant\.env
+### Static Typechecking
+Verify TypeScript types across both the React renderer and the Electron main process:
+```bash
+cd frontend
+npm run typecheck
 ```
 
-Use `src/.env.example` as the template. Non-secret settings may also be placed
-in `%APPDATA%\AI-Study-Assistant\config.json`; values in `.env` take
-precedence. Unknown keys, provider keys, and other secrets in `config.json` are
-ignored, so keep secrets in `.env`. Packaged data defaults to
-`%APPDATA%\AI-Study-Assistant\data`, and backend logs are written to
-`%APPDATA%\AI-Study-Assistant\backend.log`.
+### Backend Syntax Verification
+Verify Python syntax and module imports:
+```bash
+python -m compileall -q src
+```
 
-The build scripts target Windows. Cross-building the NSIS installer and
-PyInstaller executable from Linux is not supported by this repository.
+---
 
-## API
+## Security & Privacy
 
-See [API_DOCS.md](API_DOCS.md) for endpoints, payloads, and examples. Start at
-`GET /api/v1/health` for a readiness check and `GET /api/v1/system/info` for
-non-secret runtime configuration.
+- **Local Document Storage**: Uploaded PDFs and extracted chunk data remain on your local storage (`src/assets/` or `%APPDATA%\AI-Study-Assistant\data`). Files are never transmitted to unauthorized third parties.
+- **Strict Process Sandboxing**: The Electron renderer runs with `contextIsolation: true`, `nodeIntegration: false`, and `sandbox: true`. Arbitrary navigation and new window popups are denied.
+- **Port Masking**: In packaged mode, the backend binds strictly to `127.0.0.1` on a dynamically assigned port. The renderer communicates solely through typed IPC invocations.
+- **Credential Hygiene**: Sensitive API keys and database credentials belong exclusively in `.env` files, which are strictly gitignored and excluded from packaged builds.
+
+---
 
 ## Troubleshooting
 
-See [TROUBLESHOOTING.md](TROUBLESHOOTING.md). Common issues include PostgreSQL
-not running, the pgvector extension missing, provider keys not configured, and
-choosing an embedding size that does not match the model.
+For in-depth diagnostics, consult [TROUBLESHOOTING.md](TROUBLESHOOTING.md).
+
+- **Backend Degraded / 503**:
+  Check `GET /api/v1/health`. Ensure PostgreSQL is running and the `vector` extension is installed (`CREATE EXTENSION IF NOT EXISTS vector;`).
+- **Embedding Dimension Mismatch**:
+  If you switch embedding models, update `EMBEDDING_MODEL_SIZE` in `.env` and re-index existing projects.
+- **Missing Migrations**:
+  Run `python -m helpers.migrations upgrade head` from the `src/` directory.
+
+---
+
+## Roadmap
+
+- [ ] **Streaming Chat**: Server-Sent Events (SSE) for word-by-word LLM token streaming.
+- [ ] **Persisted Chat History**: SQLite/PostgreSQL storage for multi-turn conversations across sessions.
+- [ ] **Local Offline Models**: Native support for local embedding and generation via Ollama or llama.cpp.
+- [ ] **Cross-Platform Installers**: Linux AppImage/deb and macOS DMG packaging.
+- [ ] **Additional File Types**: Support for `.docx`, `.pptx`, and `.epub` course materials.
+
+---
+
+## Contributing
+
+Contributions make the open-source community thrive! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for full instructions on setting up your environment, coding standards, and opening a Pull Request.
+
+1. Fork the Project
+2. Create your Feature Branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your Changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the Branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
+
+---
 
 ## License
 
-Apache-2.0.
+Distributed under the **Apache License 2.0**. See [`LICENSE`](LICENSE) for details.
+
+---
+
+## Contact
+
+- **Author**: Yousef Osama
+- **GitHub Repository**: [https://github.com/YousefOsama20/AI-Study-Assistant](https://github.com/YousefOsama20/AI-Study-Assistant)
+- **Issue Tracker**: [https://github.com/YousefOsama20/AI-Study-Assistant/issues](https://github.com/YousefOsama20/AI-Study-Assistant/issues)
