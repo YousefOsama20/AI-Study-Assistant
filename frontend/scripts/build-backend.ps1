@@ -198,7 +198,7 @@ if (-not $SkipSmoke) {
     } finally {
         if ($Process -and -not $Process.HasExited) {
             Stop-Process -Id $Process.Id -Force -ErrorAction SilentlyContinue
-            $Process.WaitForExit(10_000) | Out-Null
+            $Process.WaitForExit(10000) | Out-Null
         }
         foreach ($Name in $Saved.Keys) {
             [Environment]::SetEnvironmentVariable($Name, $Saved[$Name], "Process")
