@@ -1,5 +1,6 @@
 import os
 import unittest
+from pathlib import Path
 from unittest.mock import patch
 
 from helpers.config import Settings
@@ -41,7 +42,7 @@ class TestSettings(unittest.TestCase):
             clear=True,
         ):
             settings = Settings(_env_file=None)
-            self.assertEqual(settings.data_dir, "/tmp/aistudy_custom")
+            self.assertEqual(Path(settings.data_dir), Path("/tmp/aistudy_custom"))
 
     def test_minirag_fallback(self):
         with patch.dict(
@@ -52,7 +53,7 @@ class TestSettings(unittest.TestCase):
             clear=True,
         ):
             settings = Settings(_env_file=None)
-            self.assertEqual(settings.data_dir, "/tmp/minirag_fallback")
+            self.assertEqual(Path(settings.data_dir), Path("/tmp/minirag_fallback"))
 
 
 if __name__ == "__main__":
