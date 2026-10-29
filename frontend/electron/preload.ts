@@ -1,4 +1,6 @@
 import { contextBridge, ipcRenderer } from 'electron'
+import type { SetupSaveInput, SetupStatus } from './setup-config'
+import type { DockerStatus } from './docker-manager'
 
 interface ApiRequestArg {
   method: string
@@ -42,7 +44,33 @@ const INVOKE_CHANNELS = [
   'aiStudyAssistant:restart-backend',
   'aiStudyAssistant:open-external',
   'aiStudyAssistant:open-original-pdf',
+  'aiStudyAssistant:setup-get-status',
+  'aiStudyAssistant:setup-save',
+  'aiStudyAssistant:setup-docker-status',
+  'aiStudyAssistant:setup-docker-start',
+  'aiStudyAssistant:setup-test-db',
+  'aiStudyAssistant:setup-init-db',
+  'aiStudyAssistant:setup-open-logs',
 ] as const
+
+interface SetupResult<T> {
+  status: number
+  ok: boolean
+  json: T | { message?: string; code?: string } | null
+}
+
+interface DatabaseSetupInput {
+  host?: string
+  port?: number
+  database?: string
+  username?: string
+  password?: string
+}
+
+interface InitializeDatabaseInput extends DatabaseSetupInput {
+  create_database?: boolean
+  run_migrations?: boolean
+}
 
 const EVENT_CHANNELS = [
   'aiStudyAssistant:backend-status',
@@ -133,6 +161,52 @@ contextBridge.exposeInMainWorld('aiStudyAssistant', {
       projectId: params?.projectId,
       documentId: params?.documentId,
     }) as Promise<{ ok: boolean; path?: string; error?: string }>
+  },
+
+  getSetupStatus() {
+    return invoke('aiStudyAssistant:setup-get-status') as Promise<SetupStatus>
+  },
+
+  saveSetupConfig(input: SetupSaveInput) {
+    return invoke('aiStudyAssistant:setup-save', input) as Promise<SetupStatus>
+  },
+
+  getDockerStatus() {
+    return invoke('aiStudyAssistant:setup-docker-status') as Promise<DockerStatus>
+  },
+
+  startDockerDatabase(input: {
+    port?: number
+    database?: string
+    username?: string
+  }) {
+    return invoke('aiStudyAssistant:setup-docker-start', input) as Promise<{
+      ok: boolean
+      containerStatus: string
+      message: string
+      passwordGenerated: boolean
+    }>
+  },
+
+  testDatabase(input: DatabaseSetupInput) {
+    return invoke(
+      'aiStudyAssistant:setup-test-db',
+      input,
+    ) as Promise<SetupResult<unknown>>
+  },
+
+  initializeDatabase(input: InitializeDatabaseInput) {
+    return invoke(
+      'aiStudyAssistant:setup-init-db',
+      input,
+    ) as Promise<SetupResult<unknown>>
+  },
+
+  openLogsFolder() {
+    return invoke('aiStudyAssistant:setup-open-logs') as Promise<{
+      ok: boolean
+      error: string | null
+    }>
   },
 
   onBackendStatus(callback: (status: BackendStatusPayload) => void) {

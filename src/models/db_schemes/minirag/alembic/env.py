@@ -17,6 +17,7 @@ for _p in (str(_SRC_DIR), str(_MINIRAG_DIR)):
 
 from sqlalchemy import engine_from_config
 from sqlalchemy import pool
+from sqlalchemy.engine import URL
 from schemes import SQLAlchemyBase
 
 # this is the Alembic Config object, which provides
@@ -37,25 +38,37 @@ except Exception:
     pass
 
 
+_PLACEHOLDER_URLS = {
+    "",
+    "driver://user:pass@localhost/dbname",
+    "postgresql+psycopg2://localhost/postgres",
+}
+
+
 def _database_url() -> str:
-    """Build the database URL from environment settings.
+    """Resolve the database URL for Alembic.
 
     Precedence:
       1. ALEMBIC_DATABASE_URL / DATABASE_URL explicit override
-      2. POSTGRES_* variables (application settings)
-      3. Empty fallback (offline mode only)
+      2. ``sqlalchemy.url`` supplied by ``helpers.migrations`` (setup wizard)
+      3. POSTGRES_* variables (developer CLI)
     """
     explicit = os.environ.get("ALEMBIC_DATABASE_URL") or os.environ.get("DATABASE_URL")
     if explicit:
         return explicit
 
-    username = os.environ.get("POSTGRES_USERNAME", "")
-    password = os.environ.get("POSTGRES_PASSWORD", "")
-    host = os.environ.get("POSTGRES_HOST", "localhost")
-    port = os.environ.get("POSTGRES_PORT", "5432")
-    database = os.environ.get("POSTGRES_MAIN_DATABASE", "minirag")
+    configured = (config.get_main_option("sqlalchemy.url") or "").strip()
+    if configured not in _PLACEHOLDER_URLS:
+        return configured
 
-    return f"postgresql+psycopg2://{username}:{password}@{host}:{port}/{database}"
+    return URL.create(
+        "postgresql+psycopg2",
+        username=os.environ.get("POSTGRES_USERNAME", "postgres"),
+        password=os.environ.get("POSTGRES_PASSWORD", ""),
+        host=os.environ.get("POSTGRES_HOST", "127.0.0.1"),
+        port=int(os.environ.get("POSTGRES_PORT", "5432") or 5432),
+        database=os.environ.get("POSTGRES_MAIN_DATABASE", "ai_study_assistant"),
+    ).render_as_string(hide_password=False)
 
 
 # Always override the hardcoded URL from alembic.ini with environment settings.

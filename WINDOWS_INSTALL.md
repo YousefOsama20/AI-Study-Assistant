@@ -1,286 +1,319 @@
 # Windows Installation Guide
 
-This guide covers running AI-Study-Assistant on Windows in development,
-building the installer, and configuring the installed app.
+AI-Study-Assistant is a local-first desktop study assistant. On Windows it runs
+as an Electron app with a bundled FastAPI backend. The release installer is a
+**limited beta**: Docker Desktop is a documented prerequisite for the bundled
+database, and the installer is currently unsigned.
 
-## Prerequisites
+This guide covers two audiences:
 
-### All setups
+- [Install the released app](#install-the-released-app)
+- [Build from source](#build-from-source)
+- [Configuration and data](#configuration-and-data)
+- [Troubleshooting](#troubleshooting)
+- [Backup and uninstall](#backup-and-uninstall)
 
-- **PostgreSQL 15+ with pgvector**
-  - PostgreSQL: https://www.postgresql.org/download/windows/
-  - pgvector Windows builds: https://github.com/pgvector/pgvector
-  - Enable the extension in the `ai_study_assistant` database:
-    ```sql
-    CREATE EXTENSION IF NOT EXISTS vector;
-    ```
-- **A provider API key**
-  - Cohere: `COHERE_API_KEY`
-  - OpenAI: `OPENAI_API_KEY` (optional `OPENAI_API_URL`)
-  - Google Gemini: `GEMINI_API_KEY`
+---
 
-### Docker setup
+## Install the released app
 
-- Docker Desktop 4+ with the WSL 2 backend and at least 4 GB RAM.
-- Git for Windows (optional, for cloning).
+### What you need
 
-### Native development setup
+| Requirement | Notes |
+|---|---|
+| Windows 10/11 x64 | Windows 10 21H2 or newer recommended. |
+| Docker Desktop 4+ | Must be installed and running with the WSL 2 backend. Used for the local PostgreSQL + pgvector container. |
+| One AI API key | OpenAI is the default for answers and embeddings. Cohere and Google Gemini are also supported. |
+| ~1 GB free disk | The installer, application, and database image. Course PDFs and the database need additional space. |
 
-- Python 3.11+ (3.12 recommended), with "Add Python to PATH" enabled.
-- Node.js 18+ and npm.
-- Visual C++ Build Tools for native Python packages:
-  https://visualstudio.microsoft.com/visual-cpp-build-tools/
+You do **not** need Python, Node.js, PostgreSQL, or pgvector installed for the
+installed app. Docker Desktop is the only runtime prerequisite.
 
-### Installer build setup
+### 1. Download the installer
 
-- Everything from native development, plus PowerShell 5.1 or PowerShell 7.
-- Network access for `pip install`, `npm install`, and NuGet/electron-builder
-  downloads.
-- PyInstaller is installed by the build script (`pyinstaller==6.11.1`).
+Download these two files from the repository's **Releases** page:
 
-## Option 1: PostgreSQL in Docker
+- `AI-Study-Assistant Setup 1.0.0.exe`
+- `SHA256SUMS.txt`
 
-The compose file in `docker/` starts PostgreSQL + pgvector; it does not run the
-FastAPI backend. The backend runs on the host in both development and the
-installed desktop app.
+If no release asset is published yet, build the installer from source using the
+[developer instructions](#build-from-source).
 
-1. Create the Docker environment file:
+### 2. Verify the download (recommended)
+
+```powershell
+Get-FileHash ".\AI-Study-Assistant Setup 1.0.0.exe" -Algorithm SHA256
+Get-Content .\SHA256SUMS.txt
+```
+
+The two hashes must match.
+
+### 3. Install
+
+1. Run the installer.
+2. Windows SmartScreen may show **Unknown publisher** because the beta installer
+   is not code-signed. Choose **More info → Run anyway** only if you downloaded
+   the file from the official Releases page and the hash matches.
+3. Choose an install location (per-user install; administrator rights are not
+   required).
+4. Launch **AI-Study-Assistant** from the Start menu or desktop shortcut.
+
+### 4. Start Docker Desktop
+
+The bundled PostgreSQL + pgvector service runs in Docker. Start Docker Desktop
+and wait until it reports that the engine is running.
+
+The first database start pulls `pgvector/pgvector:0.8.6-pg18-trixie`. This can
+take a few minutes on a slow connection. The container is named
+`ai-study-assistant-pgvector-1` and keeps running after the app closes so your
+data remains available.
+
+### 5. Complete the setup wizard
+
+The first launch opens a three-step wizard.
+
+#### Step 1 — Database
+
+**Docker Desktop (recommended)**
+
+1. Select **Docker Desktop**.
+2. Click **Check Docker**. The wizard reports the Docker and Compose versions.
+3. Click **Start database**. The app generates a strong database password,
+   stores it in your user profile, starts the container, and waits until it is
+   healthy.
+4. Click **Test connection**, then **Initialize database**. The app creates the
+   database if needed, enables the `vector` extension, and applies schema
+   migrations.
+
+**Existing PostgreSQL**
+
+1. Select **Existing PostgreSQL**.
+2. Enter the host, port, database name, user name, and password.
+3. The server must already have the [pgvector](https://github.com/pgvector/pgvector)
+   extension available. The user must be able to create the database (if it
+   does not exist) and run `CREATE EXTENSION vector`.
+4. Click **Test connection**, then **Initialize database**.
+
+#### Step 2 — AI providers
+
+- **OpenAI** is selected by default for both generation and embeddings, so a
+  single API key is enough to start.
+- Keep **Use the same provider for embeddings** enabled for the simplest setup.
+- To mix providers, disable that switch and choose a generation provider,
+  embedding provider, models, and embedding dimensions independently.
+- Cohere and Google Gemini keys are supported. Only the providers you select
+  require a key.
+- An optional OpenAI base URL can point at a compatible proxy.
+
+#### Step 3 — Review and finish
+
+Review the database and provider summary, then click **Save and finish**. The
+app writes the configuration, restarts the backend, and opens the dashboard.
+
+To change these settings later, open **Settings → Setup wizard**. Saved API
+keys are never displayed again; leave a key field blank to keep the stored
+value.
+
+### Where secrets are stored
+
+| File | Contents |
+|---|---|
+| `%APPDATA%\AI-Study-Assistant\config.json` | Non-secret settings: database host/port/name/user, providers, models. |
+| `%APPDATA%\AI-Study-Assistant\.env` | Database password and provider API keys. |
+| `%APPDATA%\AI-Study-Assistant\backend.log` | Redacted backend log (rotated at 5 MB). |
+| `%APPDATA%\AI-Study-Assistant\data` | Uploaded PDFs, previews, and generated files. |
+
+The Electron main process reads these files and passes values to the bundled
+backend as environment variables. Secrets never enter the renderer, the
+installer, or the repository. The backend also requires a random bearer token
+generated fresh on every app launch, and binds only to `127.0.0.1` on a dynamic
+port.
+
+Do not copy `%APPDATA%` between users or attach it to bug reports.
+
+---
+
+## Build from source
+
+### Prerequisites
+
+- Windows 10/11 x64.
+- Python **3.12** (the backend build enforces 3.12.x).
+- Node.js **18+** (Node 22 recommended) and npm.
+- Docker Desktop for running PostgreSQL + pgvector locally.
+- Git for Windows.
+- PowerShell 5.1 or PowerShell 7.
+- Network access for `pip`, `npm`, PyInstaller, and electron-builder downloads.
+
+### 1. Clone and install dependencies
+
+```powershell
+git clone https://github.com/YousefOsama20/AI-Study-Assistant.git
+cd AI-Study-Assistant
+
+cd frontend
+npm ci
+cd ..
+```
+
+### 2. Start PostgreSQL + pgvector (development)
 
 ```powershell
 cd docker
-copy .env.example .env
+Copy-Item .env.example .env
+notepad .env   # set POSTGRES_PASSWORD
+docker compose up -d pgvector
+cd ..
+```
+
+The compose file maps PostgreSQL to host port `5400`. It does not run the
+FastAPI backend; the backend always runs on the host.
+
+### 3. Create the backend environment
+
+```powershell
+cd src
+python -m venv .venv
+.venv\Scripts\Activate.ps1
+python -m pip install --upgrade pip
+pip install -r requirements.txt
+Copy-Item .env.example .env
 notepad .env
+cd ..
 ```
 
-2. Set the database password:
-
-```env
-POSTGRES_PASSWORD=your_secure_password
-```
-
-3. Start PostgreSQL:
-
-```powershell
-docker compose -f docker-compose.yml up -d pgvector
-```
-
-4. Create the application database and enable pgvector:
-
-```powershell
-docker exec -it pgvector psql -U postgres -c "CREATE DATABASE ai_study_assistant;"
-docker exec -it pgvector psql -U postgres -d ai_study_assistant -c "CREATE EXTENSION IF NOT EXISTS vector;"
-```
-
-5. Configure `src\.env` with port `5400`:
+Set at minimum:
 
 ```env
 POSTGRES_USERNAME=postgres
-POSTGRES_PASSWORD=your_secure_password
+POSTGRES_PASSWORD=your_password
 POSTGRES_HOST=127.0.0.1
 POSTGRES_PORT=5400
 POSTGRES_MAIN_DATABASE=ai_study_assistant
 
 GENERATION_BACKEND=OPENAI
-EMBEDDING_BACKEND=COHERE
-OPENAI_API_KEY=
-COHERE_API_KEY=
+EMBEDDING_BACKEND=OPENAI
+OPENAI_API_KEY=sk-...
 ```
 
-Then follow the native backend steps below. `/api/v1/health` returns `200` when
-the database and vector store are ready and `503` with a `degraded` status
-otherwise.
-
-## Option 2: Native backend
-
-### 1. Create the database
-
-Create a `ai_study_assistant` database and enable pgvector:
-
-```sql
-CREATE DATABASE ai_study_assistant;
-\c ai_study_assistant
-CREATE EXTENSION IF NOT EXISTS vector;
-```
-
-### 2. Install Python dependencies
-
-From the repository root:
-
-```powershell
-cd src
-python -m venv .venv
-.venv\Scripts\activate
-python -m pip install --upgrade pip
-pip install -r requirements.txt
-```
-
-### 3. Configure the environment
-
-```powershell
-copy .env.example .env
-notepad .env
-```
-
-Set database and provider values:
-
-```env
-POSTGRES_USERNAME=postgres
-POSTGRES_PASSWORD=your_password
-POSTGRES_HOST=localhost
-POSTGRES_PORT=5432
-POSTGRES_MAIN_DATABASE=ai_study_assistant
-
-GENERATION_BACKEND=OPENAI
-EMBEDDING_BACKEND=COHERE
-OPENAI_API_KEY=
-COHERE_API_KEY=
-GEMINI_API_KEY=
-```
-
-Keep `EMBEDDING_MODEL_SIZE` aligned with `EMBEDDING_MODEL_ID`.
+The database and `vector` extension can be created automatically by migration
+helpers; `CREATE EXTENSION` requires a role with sufficient privileges.
 
 ### 4. Apply migrations
 
-Back up the database first if it already contains data, then run:
-
 ```powershell
-# Recommended (programmatic runner with auto-stamping):
 cd src
 python -m helpers.migrations upgrade head
-
-# Or directly with Alembic:
-cd src\models\db_schemes\minirag
-alembic upgrade head
+cd ..
 ```
 
-The packaged backend runs this automatically on startup and can stamp schemas
-that predate Alembic. Back up existing study material before the first launch
-of a new version.
+Back up existing study material before upgrading an existing database.
 
-### 5. Start the backend
-
-```powershell
-cd src
-python main.py
-```
-
-Or use the helper script from the repository root:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File frontend\scripts\backend-dev.ps1
-```
-
-The helper binds to `127.0.0.1:5000` and enables reload. Pass `-NoReload` to
-disable it, or `-Python "C:\path\python.exe"` to select an interpreter.
-
-## Run the desktop app in development
+### 5. Run the desktop app in development
 
 ```powershell
 cd frontend
-npm install
 npm run electron:dev
 ```
 
-`npm run electron:dev` builds the Electron main/preload code, starts Vite, and
-opens Electron. Electron starts and supervises the backend itself; do not run a
-second backend on the same port. Set `AISTUDY_PYTHON` if Python is not on
-`PATH` under the expected name.
+Electron compiles the main process, starts Vite, launches the backend from
+`src\main.py`, allocates a free loopback port, and opens the window. Set
+`AISTUDY_PYTHON` if the interpreter is not the default `python`.
 
-To develop only the renderer in a browser, start the backend in one terminal and
-`npm run dev` in another.
+For renderer-only browser development, run the backend and Vite separately:
 
-## Build the installer
+```powershell
+# Terminal 1
+powershell -ExecutionPolicy Bypass -File frontend\scripts\backend-dev.ps1
 
-From the repository root:
+# Terminal 2
+cd frontend
+npm run dev
+```
+
+Set `CORS_ALLOW_ORIGINS="http://localhost:5173"` in `src\.env` for browser mode.
+
+### 6. Build the installer
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File frontend\scripts\build-installer.ps1
 ```
 
-The script performs:
+The script:
 
-1. `npm install` when `frontend\node_modules` is missing.
-2. `npm run typecheck`.
-3. `npm run test` (skip with `-SkipTests`).
-4. PyInstaller one-file backend build (skip with `-SkipBackend`).
-5. Renderer and Electron builds.
-6. `electron-builder --win --publish never`.
+1. Installs npm dependencies with `npm ci` when `node_modules` is missing.
+2. Runs TypeScript checks and the Vitest suite (skip tests with `-SkipTests`).
+3. Creates an isolated Python 3.12 virtual environment at
+   `frontend\build\venv`, installs `src\requirements.txt`, and builds the
+   PyInstaller backend.
+4. Smoke-tests the frozen backend: it must reject unauthenticated requests with
+   `401` and return `503 degraded` for an unconfigured database.
+5. Builds the renderer and Electron main process.
+6. Packages the NSIS installer with electron-builder.
+7. Validates the installer, `win-unpacked` resources, and writes
+   `frontend\dist\SHA256SUMS.txt`.
 
 Output:
 
 ```
 frontend\dist\AI-Study-Assistant Setup 1.0.0.exe
+frontend\dist\SHA256SUMS.txt
 ```
 
-Manual equivalent:
+Useful switches:
 
-```powershell
-cd frontend
-npm install
-npm run backend:build
-npm run dist:win
-```
+| Switch | Effect |
+|---|---|
+| `-SkipTests` | Skip Vitest; type checking still runs. |
+| `-SkipBackend` | Reuse an existing `frontend\build\backend\AIStudyAssistantBackend.exe`. |
+| `-SkipInstall` | Require existing `node_modules` and backend virtual environment. |
+| `-Python <path>` | Base Python 3.12 interpreter for the backend build environment. |
 
-`npm run dist:win` builds the renderer and Electron code but does **not** build
-the backend executable. Run `backend:build` first, or run
-`build-installer.ps1`, which performs both.
+`npm run dist:win` runs the same installer script. `npm run backend:build`
+builds and smoke-tests only the backend.
 
-### What is bundled
+### What the installer bundles
 
 - Electron main process, preload script, and renderer (`app.asar`).
-- `AIStudyAssistantBackend.exe` under `resources\backend`.
+- `AIStudyAssistantBackend.exe` under `resources\backend` (self-contained;
+  users do not need Python).
+- `resources\docker\docker-compose.yml` for the PostgreSQL + pgvector service.
 - Application and installer icons from `frontend\assets`.
 
-### What is not bundled
+It does **not** bundle PostgreSQL, pgvector, Docker, provider keys, `.env` or
+`config.json` files, or user data.
 
-- PostgreSQL or pgvector.
-- Provider API keys.
-- A `.env` or `config.json` file.
-- Existing projects, documents, or vector data.
+### Continuous integration
 
-## First launch of the installed app
+`.github/workflows/windows-build.yml` runs on pull requests, pushes to
+`main`/`master`, version tags, and manual dispatch. It installs dependencies,
+runs type checks and tests, builds the backend and installer, verifies packaged
+resources, writes SHA-256 checksums, and uploads a `windows-installer` artifact.
+It does not publish GitHub Releases automatically.
 
-The installed app reads configuration from:
+---
+
+## Configuration and data
+
+### Installed app
+
+Configuration lives in `%APPDATA%\AI-Study-Assistant`:
 
 ```
-%APPDATA%\AI-Study-Assistant\.env
-%APPDATA%\AI-Study-Assistant\config.json
+config.json    non-secret settings written by the setup wizard
+.env           database password and provider API keys
+backend.log    redacted backend log
+data\          uploaded PDFs, previews, generated files
 ```
 
-Create `.env` using `src\.env.example` as the template for provider keys and
-other secrets. Non-secret settings such as database host/port, models, and
-`FILE_MAX_SIZE` may go in `config.json`; `.env` takes precedence when both
-files set the same key. Unknown keys and secrets in `config.json` are ignored.
-The app starts its bundled backend on a free loopback port (or `PORT` if set in
-either file) and points it at local PostgreSQL.
+Advanced users can add allowlisted non-secret settings to `config.json` or
+`.env`. `.env` values override the structured configuration for the keys it
+sets. Restart the app (or use **Settings → Restart backend**) after editing.
 
-Runtime files:
-
-| Item | Location |
-|------|----------|
-| Configuration | `%APPDATA%\AI-Study-Assistant\.env` and `config.json` |
-| Backend log | `%APPDATA%\AI-Study-Assistant\backend.log` |
-| Uploaded files, previews, local data | `%APPDATA%\AI-Study-Assistant\data` |
-
-Override the data location with `AISTUDY_DATA_DIR` in the same `.env` file.
-`config.json` accepts only allowlisted non-secret scalar settings such as
-`PORT`, database connection values, model names, and `FILE_MAX_SIZE`; provider
-keys and unknown keys are ignored there. Packaged mode binds to `127.0.0.1`,
-disables reload, and runs migrations automatically unless
-`AISTUDY_AUTO_MIGRATE=0`.
-
-## Configuration reference
-
-### Required
-
-- PostgreSQL connection settings.
-- A key for each provider selected by `GENERATION_BACKEND` and
-  `EMBEDDING_BACKEND`.
-
-### Commonly changed
+Commonly changed settings:
 
 | Setting | Meaning |
-|---------|---------|
+|---|---|
 | `GENERATION_BACKEND` | `OPENAI`, `GEMINI`, or `COHERE` |
 | `EMBEDDING_BACKEND` | `OPENAI`, `GEMINI`, or `COHERE` |
 | `GENERATION_MODEL_ID` | Generation model name |
@@ -292,66 +325,98 @@ disables reload, and runs migrations automatically unless
 | `AISTUDY_DATA_DIR` | Data directory override |
 | `PORT` | Fixed backend port; omit to let Electron choose one |
 
-Data locations:
+Do not set `AISTUDY_API_TOKEN` yourself in the installed app; Electron generates
+it per launch. The renderer never receives it.
 
-- Uploaded PDFs: `AISTUDY_DATA_DIR\assets\files\{project_id}`
+### Data locations
+
+- Uploaded PDFs: `%APPDATA%\AI-Study-Assistant\data\assets\files\{project_id}`
 - Generated previews: `...\previews`
-- Database: PostgreSQL `ai_study_assistant`
+- Database: PostgreSQL database `ai_study_assistant` in the Docker volume
+  `ai-study-assistant_pgvector_data`
+
+---
 
 ## Troubleshooting
 
-### Port 5000 already in use
+### The wizard says Docker is not installed
+
+Install Docker Desktop from <https://www.docker.com/products/docker-desktop/>,
+start it, wait for the engine to report running, then click **Check Docker**
+again. On Windows, Docker Desktop requires the WSL 2 backend (or Hyper-V).
+
+### The database container does not become healthy
 
 ```powershell
-netstat -ano | findstr :5000
+docker ps -a --filter "name=pgvector"
+docker logs ai-study-assistant-pgvector-1 --tail 100
 ```
 
-Stop the conflicting process, choose another port in `src\.env` (`PORT=5001`),
-or remove `PORT` so the Electron backend manager allocates a free port.
+Common causes: port `5400` already in use, insufficient Docker memory, or a
+stale volume with a different password. Choose another port in the wizard, or
+remove the test container/volume after backing up any data you need.
 
-### Backend logs
+### `password authentication failed`
 
-Installed app:
+The stored password no longer matches the container. If the database has no
+important data, remove the Docker volume and run the wizard again:
+
+```powershell
+docker rm -f ai-study-assistant-pgvector-1
+docker volume rm ai-study-assistant_pgvector_data
+```
+
+### Health endpoint returns 503
+
+Open **Settings → Setup wizard** and re-run the database test and
+**Initialize database**. Then open
+`%APPDATA%\AI-Study-Assistant\backend.log` and read the last lines. The health
+response never includes secrets; it reports booleans and error class names.
+
+### Backend fails to start
 
 ```powershell
 Get-Content "$env:APPDATA\AI-Study-Assistant\backend.log" -Tail 100
 ```
 
-Development: use the terminal running `python main.py`.
+Check that `resources\backend\AIStudyAssistantBackend.exe` exists in the
+installation directory. If it is missing, reinstall the app. In development,
+run `npm run backend:build` and confirm `AISTUDY_PYTHON` points at the backend
+virtual environment.
 
-### Database connection failures
+### Port 5000 is already in use
 
 ```powershell
-# Is PostgreSQL listening?
-Test-NetConnection localhost -Port 5432
-
-# Inspect the database objects
-psql -U postgres -h localhost -d ai_study_assistant -c "\dt"
+netstat -ano | findstr :5000
 ```
 
-### pgvector missing
+Remove `PORT` from `%APPDATA%\AI-Study-Assistant\.env` or `config.json` so
+Electron allocates a free loopback port, or choose another port.
+
+### pgvector is missing on an existing PostgreSQL server
 
 ```sql
 \c ai_study_assistant
 CREATE EXTENSION IF NOT EXISTS vector;
 ```
 
+On Windows, install a pgvector build that matches your PostgreSQL version, or
+use the bundled Docker image.
+
 ### Installer build fails during PyInstaller
 
-- Confirm Python 3.11/3.12 is the interpreter passed to the script.
-- Run `pip install -r src\requirements.txt` first and fix any native build
-  errors.
+- Confirm Python 3.12 is the interpreter passed to the script.
+- Delete `frontend\build\venv` and rebuild to get a clean environment.
 - Build from a path without restrictive long-path or permission issues.
-- Re-run with `-SkipInstall` only after dependencies and PyInstaller are
-  already installed.
+- Do not use `-SkipInstall` unless `frontend\build\venv` already contains the
+  requirements and PyInstaller.
 
 ### Installer build fails during electron-builder
 
 - Ensure `frontend\build\backend\AIStudyAssistantBackend.exe` exists.
 - Ensure `frontend\build\renderer\index.html` exists.
-- Delete `frontend\node_modules` and `frontend\dist`, then run `npm install`.
-- Verify `frontend\assets\icon.ico` is present (regenerate with
-  `npm run icons`).
+- Delete `frontend\node_modules` and `frontend\dist`, then run `npm ci`.
+- Verify `frontend\assets\icon.ico` is present (regenerate with `npm run icons`).
 
 ### Long path issues
 
@@ -362,40 +427,55 @@ git config --system core.longpaths true
 Or enable `LongPathsEnabled` under
 `HKLM\SYSTEM\CurrentControlSet\Control\FileSystem`.
 
-## Backup and restore
+---
+
+## Backup and uninstall
+
+### Backup
 
 ```powershell
-# Backup
-pg_dump -U postgres -h localhost ai_study_assistant > ai_study_assistant-backup.sql
+# Database (Docker)
+docker exec ai-study-assistant-pgvector-1 pg_dump -U postgres ai_study_assistant > ai_study_assistant-backup.sql
 
-# Restore
-psql -U postgres -h localhost ai_study_assistant < ai_study_assistant-backup.sql
-
-# Backup uploaded documents and previews
+# Uploaded documents and previews
 Copy-Item "$env:APPDATA\AI-Study-Assistant\data" .\ai_study_assistant-data -Recurse
+
+# Configuration and secrets (store securely; do not share)
+Copy-Item "$env:APPDATA\AI-Study-Assistant\config.json" .\config.json
+Copy-Item "$env:APPDATA\AI-Study-Assistant\.env" .\.env
 ```
 
 Back up PostgreSQL and the data directory together so document records and
 files stay consistent.
 
-## Uninstall
+### Restore
 
-1. Windows Settings -> Apps -> AI-Study-Assistant -> Uninstall.
+```powershell
+docker exec -i ai-study-assistant-pgvector-1 psql -U postgres ai_study_assistant < ai_study_assistant-backup.sql
+Copy-Item .\ai_study_assistant-data "$env:APPDATA\AI-Study-Assistant\data" -Recurse
+```
+
+### Uninstall
+
+1. Windows Settings → Apps → AI-Study-Assistant → Uninstall.
 2. Optionally remove configuration and data:
 
 ```powershell
 Remove-Item "$env:APPDATA\AI-Study-Assistant" -Recurse
 ```
 
-3. Optionally drop the database:
+3. Optionally remove the database container and volume:
 
-```sql
-DROP DATABASE ai_study_assistant;
+```powershell
+docker rm -f ai-study-assistant-pgvector-1
+docker volume rm ai-study-assistant_pgvector_data
 ```
+
+---
 
 ## Support
 
 - API reference: [API_DOCS.md](API_DOCS.md)
 - General troubleshooting: [TROUBLESHOOTING.md](TROUBLESHOOTING.md)
 - Interactive API docs when the backend is running:
-  http://localhost:5000/docs
+  `http://127.0.0.1:<port>/docs` (the port is chosen by Electron)

@@ -299,6 +299,82 @@ export const ar: Dictionary = {
   'settings.secretsNote': 'لا تظهر مفاتيح API أبدًا في الواجهة أو السجلات.',
   'settings.configHint':
     'يمكن وضع إعدادات الخادم غير الحساسة في config.json، مع إبقاء المفاتيح في .env داخل مجلد بيانات المستخدم. يلغي .env قيم config.json. أعد تشغيل الخادم بعد تغيير أي منهما.',
+  'settings.setupWizard': 'معالج الإعداد',
+
+  'setup.title': 'إعداد AI-Study-Assistant',
+  'setup.subtitle': 'اربط قاعدة البيانات واختر مزوّدي الذكاء الاصطناعي.',
+  'setup.progressLabel': 'تقدم الإعداد',
+  'setup.stepDatabase': 'قاعدة البيانات',
+  'setup.stepProviders': 'مزوّدو الذكاء',
+  'setup.stepFinish': 'الإنهاء',
+  'setup.desktopOnlyTitle': 'إعداد سطح المكتب',
+  'setup.desktopOnly':
+    'يعمل معالج الإعداد داخل تطبيق سطح المكتب حيث يمكنه إدارة Docker وتخزين الأسرار بأمان.',
+  'setup.openLogs': 'فتح السجلات',
+  'setup.footerNote':
+    'يُحفظ الإعداد في ملف تعريف المستخدم على Windows. لا تظهر مفاتيح API مرة أخرى بعد الحفظ.',
+  'setup.databaseTitle': 'قاعدة البيانات',
+  'setup.databaseDescription':
+    'استخدم حاوية PostgreSQL + pgvector المرفقة، أو اتصل بخادم PostgreSQL موجود عليه امتداد pgvector.',
+  'setup.modeDocker': 'Docker Desktop',
+  'setup.modeDockerHint':
+    'موصى به. يشغّل حاوية PostgreSQL محلية مع pgvector، ويتطلب Docker Desktop.',
+  'setup.modeExisting': 'PostgreSQL موجود',
+  'setup.modeExistingHint':
+    'استخدم خادم PostgreSQL تعمل عليه بالفعل. يجب أن تكون قاعدة البيانات وامتداد pgvector موجودين أو قابلين للإنشاء.',
+  'setup.dockerTitle': 'قاعدة بيانات Docker',
+  'setup.dockerHint': 'تحقق من Docker Desktop ثم شغّل حاوية قاعدة البيانات.',
+  'setup.dockerNotRunning': 'Docker Desktop لا يعمل.',
+  'setup.checkDocker': 'فحص Docker',
+  'setup.startDatabase': 'تشغيل قاعدة البيانات',
+  'setup.dockerDownload': 'تنزيل Docker Desktop',
+  'setup.dockerRequiredNote':
+    'يتطلب Docker Desktop لتشغيل قاعدة البيانات المرفقة. ثبّته وشغّله ثم أعد الفحص.',
+  'setup.existingSqlHint':
+    'المطلوب على الخادم (بصلاحية مدير PostgreSQL): CREATE DATABASE ai_study_assistant; ثم اتصل بها ونفّذ CREATE EXTENSION IF NOT EXISTS vector;',
+  'setup.host': 'المضيف',
+  'setup.port': 'المنفذ',
+  'setup.databaseName': 'اسم قاعدة البيانات',
+  'setup.username': 'اسم المستخدم',
+  'setup.password': 'كلمة مرور قاعدة البيانات',
+  'setup.passwordKeep': 'كلمة المرور محفوظة — اتركه فارغًا للإبقاء عليها',
+  'setup.passwordDockerHint':
+    'تُنشأ تلقائيًا عند تشغيل الحاوية. اتركه فارغًا لاستخدام كلمة المرور المحفوظة.',
+  'setup.passwordHint': 'اتركه فارغًا فقط إذا كان الخادم يسمح بمصادقة الثقة.',
+  'setup.testConnection': 'اختبار الاتصال',
+  'setup.initialize': 'تهيئة قاعدة البيانات',
+  'setup.dbConnected': 'نجح الاتصال بقاعدة البيانات',
+  'setup.dbFailed': 'فشل الاتصال بقاعدة البيانات',
+  'setup.vectorMissing':
+    'امتداد pgvector غير متاح على هذا الخادم. ثبّت الامتداد قبل المتابعة.',
+  'setup.dbInitDone': 'قاعدة البيانات وامتداد pgvector والمخطط جاهزة.',
+  'setup.providersTitle': 'مزوّدو الذكاء الاصطناعي',
+  'setup.providersDescription':
+    'OpenAI هو الافتراضي للإجابات والتضمينات، لذا يكفي مفتاح واحد للبدء. يدعم التطبيق أيضًا Cohere وGemini.',
+  'setup.generationProvider': 'مزوّد التوليد',
+  'setup.embeddingProvider': 'مزوّد التضمين',
+  'setup.model': 'نموذج التوليد',
+  'setup.embeddingModel': 'نموذج التضمين',
+  'setup.embeddingSize': 'حجم التضمين',
+  'setup.useSameProvider': 'استخدام نفس المزوّد للتضمينات',
+  'setup.useSameProviderHint':
+    'يبقي مفتاح API واحدًا وإعداد مزوّد واحدًا. أوقفه لخلط المزوّدين.',
+  'setup.embeddingInherited': 'تستخدم التضمينات {provider} · {model} · {size} بُعدًا.',
+  'setup.apiKey': 'مفتاح API',
+  'setup.apiKeySaved': 'محفوظ — اتركه فارغًا للإبقاء عليه',
+  'setup.apiKeyPlaceholder': 'الصق مفتاح API',
+  'setup.baseUrl': 'عنوان API الأساسي (اختياري)',
+  'setup.baseUrlHint': 'غيّره فقط لوكيل متوافق أو خادم محاكاة محلي.',
+  'setup.reviewTitle': 'المراجعة والإنهاء',
+  'setup.reviewDescription':
+    'الحفظ يكتب الإعدادات ويعيد تشغيل الخادم ثم يفتح التطبيق.',
+  'setup.finishHint':
+    'تبقى حاوية قاعدة البيانات تعمل بعد إغلاق التطبيق ليبقى بياناتك متاحًا. استخدم الإعدادات لإعادة فتح المعالج لاحقًا.',
+  'setup.saving': 'جارٍ الحفظ وإعادة التشغيل…',
+  'setup.saveFinish': 'حفظ وإنهاء',
+  'setup.requiredKeys':
+    'اربط قاعدة البيانات وقدّم مفتاح API لكل مزوّد محدد قبل الإنهاء.',
+  'setup.restartFailed': 'لم يُعد تشغيل الخادم. تحقق من السجلات وحاول مجددًا.',
 
   'about.title': 'حول التطبيق',
   'about.version': 'الإصدار {version}',

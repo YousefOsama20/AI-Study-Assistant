@@ -1,3 +1,5 @@
+import path from 'path'
+import { fileURLToPath } from 'url'
 import type { BrowserWindowConstructorOptions } from 'electron'
 
 export const SECURE_WEB_PREFERENCES = {
@@ -24,12 +26,30 @@ export function isSafeExternalUrl(raw: unknown): string | null {
   return parsed.toString()
 }
 
+function filePathInside(url: string, root: string): boolean {
+  let target: string
+  try {
+    target = fileURLToPath(url)
+  } catch {
+    return false
+  }
+  const relative = path.relative(path.resolve(root), path.resolve(target))
+  return relative !== '' && !relative.startsWith('..') && !path.isAbsolute(relative)
+}
+
 export function isAllowedNavigation(
   url: string,
   devServerUrl: string | undefined,
+  appRoot?: string,
 ): boolean {
   if (devServerUrl) {
-    return url.startsWith(devServerUrl)
+    return url === devServerUrl || url.startsWith(`${devServerUrl}/`)
   }
-  return url.startsWith('file://')
+  if (!url.startsWith('file://')) {
+    return false
+  }
+  if (!appRoot) {
+    return true
+  }
+  return filePathInside(url, appRoot)
 }

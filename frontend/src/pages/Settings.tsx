@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
-import { AlertTriangle } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { AlertTriangle, Wrench } from 'lucide-react'
 import { useBackendStore } from '../stores/backend'
 import { useSettingsStore } from '../stores/settings'
 import { pushToast } from '../stores/toasts'
@@ -24,6 +25,7 @@ function InfoRow({ label, value }: { label: string; value: string }) {
 
 export function SettingsPage() {
   const { t, locale } = useI18n()
+  const navigate = useNavigate()
 
   const theme = useSettingsStore((s) => s.theme)
   const setTheme = useSettingsStore((s) => s.setTheme)
@@ -240,13 +242,19 @@ export function SettingsPage() {
               {t('settings.healthCheck')}
             </Button>
             {canRestart ? (
-              <Button
-                variant="outline"
-                loading={restarting}
-                onClick={() => void handleRestart()}
-              >
-                {t('backend.restart')}
-              </Button>
+              <>
+                <Button
+                  variant="outline"
+                  loading={restarting}
+                  onClick={() => void handleRestart()}
+                >
+                  {t('backend.restart')}
+                </Button>
+                <Button variant="outline" onClick={() => navigate('/setup')}>
+                  <Wrench className="size-4" />
+                  {t('settings.setupWizard')}
+                </Button>
+              </>
             ) : null}
           </div>
         </CardContent>

@@ -1,36 +1,27 @@
+name: ai-study-assistant
+
 services:
-  mongodb:
-    image: mongo:7-jammy
-
-    container_name: mongodb
-
-    ports:
-      - "27007:27017"
-
-    volumes:
-      - ./mongodb:/data/db
-    
-    networks:
-      - backend
-    
-    restart: always
-
   pgvector:
     image: pgvector/pgvector:0.8.6-pg18-trixie
-    container_name: pgvector
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-ai_study_assistant}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
     ports:
-      - "5400:5432"
+      - "${AISTUDY_DB_PORT:-5400}:5432"
     volumes:
       - pgvector_data:/var/lib/postgresql
-    environment:
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-    networks:
-      - backend
-    restart: always
-
-networks:
-  backend:
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-ai_study_assistant}",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 15s
+    restart: unless-stopped
 
 volumes:
-  mongodata:
   pgvector_data:

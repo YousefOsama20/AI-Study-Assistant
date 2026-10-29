@@ -10,8 +10,32 @@ Interactive OpenAPI docs are available at `/docs` while the backend runs.
 
 ## Authentication
 
-None. This is a single-user, local-first application. Do not expose the port to
-untrusted networks.
+### Development
+
+No authentication. The backend binds `0.0.0.0:5000` (or `127.0.0.1` if specified)
+and trusts all callers on the local network.
+
+### Packaged Desktop App
+
+The Electron main process generates a random 64-hex-character bearer token at
+each launch (`AISTUDY_API_TOKEN`) and passes it to the backend child process.
+Every HTTP request from the main process includes:
+
+```http
+Authorization: Bearer <token>
+```
+
+The token is never exposed to the renderer. Requests without a valid token
+receive `401 Unauthorized`:
+
+```json
+{
+  "detail": "Unauthorized"
+}
+```
+
+`OPTIONS` preflight requests are exempt. When no `AISTUDY_API_TOKEN` is set
+(development mode), the middleware passes all requests through.
 
 ## Conventions
 
@@ -55,28 +79,48 @@ Common signals:
 GET /api/v1/health
 ```
 
-Returns `200` when the database and vector store are connected, otherwise
-`503` with `"status": "degraded"`. The bundled backend treats any HTTP response
-as "server is up", even when degraded.
+Returns `200` when the database and vector store are connected and providers
+are configured, otherwise `503` with `"status": "degraded"`. The bundled
+backend treats any HTTP response as "server is up", even when degraded.
 
 ```json
 {
   "status": "ok",
-  "app": { "name": "AI-Study-Assistant", "version": "0.1" },
-  "database": { "configured": true, "connected": true, "error": null },
+  "app": { "name": "AI-Study-Assistant", "version": "1.0.0" },
+  "database": {
+    "configured": true,
+    "connected": true,
+    "ready": true,
+    "error": null
+  },
+  "migration": {
+    "attempted": true,
+    "succeeded": true,
+    "error": null
+  },
   "vectordb": { "backend": "PGVECTOR", "connected": true, "error": null },
   "generation": {
     "backend": "OPENAI",
-    "model": "gpt-3.5-turbo-0125",
+    "model": "gpt-4o-mini",
     "configured": true
   },
   "embedding": {
-    "backend": "COHERE",
-    "model": "embed-multilingual-light-v3.0",
+    "backend": "OPENAI",
+    "model": "text-embedding-3-small",
     "configured": true
   }
 }
 ```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `database.configured` | boolean | Host, user, database, and port are set; password is present when packaged |
+| `database.connected` | boolean | A live `SELECT 1` succeeded against the database |
+| `database.ready` | boolean | The database was usable at startup (migrations ran or connectivity checked) |
+| `database.error` | string \| null | Exception class name on failure |
+| `migration.attempted` | boolean | Auto-migration was enabled and ran |
+| `migration.succeeded` | boolean | Alembic `upgrade head` completed without error |
+| `migration.error` | string \| null | Exception class name on failure |
 
 ### System Info
 
@@ -87,6 +131,146 @@ GET /api/v1/system/info
 Returns non-secret runtime settings used by Settings/About pages, including
 upload limits, provider/model names, vector backend, preview settings, and
 chunking defaults.
+
+## First-Run Setup
+
+These endpoints are called by Electron's main process during the setup wizard.
+They never return secrets and translate database errors into actionable messages.
+
+All setup endpoints require the per-launch bearer token when running in
+packaged mode.
+
+### Setup Status
+
+```http
+GET /api/v1/setup/status
+```
+
+Reports which parts of the first-run setup are complete. No secrets are
+returned — only booleans, provider names, and public connection metadata.
+
+```json
+{
+  "configured": false,
+  "database": {
+    "configured": false,
+    "host": "127.0.0.1",
+    "port": 5432,
+    "database": "ai_study_assistant",
+    "username": "postgres",
+    "password_set": false
+  },
+  "generation": {
+    "backend": "OPENAI",
+    "model": "gpt-4o-mini",
+    "configured": false
+  },
+  "embedding": {
+    "backend": "OPENAI",
+    "model": "text-embedding-3-small",
+    "configured": false
+  },
+  "packaged": true
+}
+```
+
+The top-level `configured` is `true` only when database, generation, and
+embedding are all configured.
+
+### Test Database Connection
+
+```http
+POST /api/v1/setup/test-db
+Content-Type: application/json
+
+{
+  "host": "127.0.0.1",
+  "port": 5400,
+  "database": "ai_study_assistant",
+  "username": "postgres",
+  "password": "secret"
+}
+```
+
+Tests reachability and pgvector availability without changing anything.
+
+**Success (200):**
+
+```json
+{
+  "ok": true,
+  "server_reachable": true,
+  "database_exists": true,
+  "vector_available": true,
+  "vector_installed": true,
+  "vector_version": "0.8.6",
+  "server_version": "18.4",
+  "message": "Connection successful."
+}
+```
+
+**Failure (400):**
+
+```json
+{
+  "ok": false,
+  "code": "connection_refused",
+  "message": "Could not connect to PostgreSQL. Make sure the database is running and the host and port are correct."
+}
+```
+
+Error codes: `invalid_host`, `invalid_port`, `invalid_username`,
+`invalid_database`, `auth_failed`, `host_not_found`, `connection_refused`,
+`timeout`, `database_missing`, `permission_denied`, `database_error`.
+
+### Initialize Database
+
+```http
+POST /api/v1/setup/init-db
+Content-Type: application/json
+
+{
+  "host": "127.0.0.1",
+  "port": 5400,
+  "database": "ai_study_assistant",
+  "username": "postgres",
+  "password": "secret",
+  "create_database": true,
+  "run_migrations": true
+}
+```
+
+Creates the database if needed, enables the pgvector extension, and applies
+Alembic migrations. All three steps are idempotent.
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `create_database` | boolean | `true` | Create the database via a maintenance database if it does not exist |
+| `run_migrations` | boolean | `true` | Run `alembic upgrade head` after database and extension setup |
+
+**Success (200):**
+
+```json
+{
+  "ok": true,
+  "created_database": true,
+  "database_existed": false,
+  "extension_created": true,
+  "migrations_applied": true,
+  "revision": "001_add_material_fields",
+  "message": "Database initialized."
+}
+```
+
+**Failure (400):**
+
+```json
+{
+  "ok": false,
+  "code": "migration_failed",
+  "message": "The database is reachable but schema migration failed: ..."
+}
+```
 
 ## Projects
 
@@ -481,6 +665,7 @@ Content-Type: application/json
 |------|---------|
 | 200 | Success |
 | 201 | Project created |
+| 401 | Unauthorized — missing or invalid bearer token (packaged mode only) |
 | 400 | Validation, duplicate, processing, upload, search, or RAG error |
 | 404 | Project/document/page not found |
 | 500 | Unhandled server error |
@@ -560,3 +745,13 @@ async function askQuestion(projectId: number, question: string) {
 - Health and system-info endpoints.
 - Packaging/runtime hardening: loopback-only packaged backend, IPC route
   allowlist, and migration-aware startup.
+
+### v1.1.0 (2026-10-29)
+
+- Per-launch bearer token authentication for the packaged backend.
+- First-run setup endpoints: `/api/v1/setup/status`, `/api/v1/setup/test-db`,
+  `/api/v1/setup/init-db`.
+- Expanded `/api/v1/health` response with `database.ready`, `database.error`,
+  and `migration` status object.
+- Database provisioning: automatic database creation, pgvector extension
+  enablement, and Alembic migration via the setup wizard.

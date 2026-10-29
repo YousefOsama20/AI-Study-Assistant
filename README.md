@@ -14,7 +14,7 @@
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.110-009688.svg?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15%2B-336791.svg?logo=postgresql&logoColor=white)](https://www.postgresql.org/)
 [![pgvector](https://img.shields.io/badge/pgvector-0.4%2B-2496ED.svg)](https://github.com/pgvector/pgvector)
-[![Tests](https://img.shields.io/badge/Vitest-86%20Passed-green.svg?logo=vitest&logoColor=white)](frontend/tests)
+[![Tests](https://img.shields.io/badge/Vitest-94%20Passed-green.svg?logo=vitest&logoColor=white)](frontend/tests)
 
 ---
 
@@ -38,6 +38,7 @@ Modern students and researchers are inundated with hundreds of pages of lecture 
 - [Project Structure](#project-structure)
 - [Prerequisites](#prerequisites)
 - [Installation & Setup](#installation--setup)
+  - [Windows Installer (Recommended for Users)](#windows-installer-recommended-for-users)
   - [1. Clone the Repository](#1-clone-the-repository)
   - [2. Start PostgreSQL with pgvector](#2-start-postgresql-with-pgvector)
   - [3. Backend Configuration](#3-backend-configuration)
@@ -155,14 +156,16 @@ AI-Study-Assistant/
 │   ├── electron/                 # Electron main process & IPC security
 │   │   ├── main.ts               # Window lifecycle & IPC dispatching
 │   │   ├── backend-manager.ts    # Backend spawn, port allocation & health checks
+│   │   ├── docker-manager.ts     # Bundled PostgreSQL container lifecycle
+│   │   ├── setup-config.ts       # Setup wizard configuration & secret storage
 │   │   ├── api-rules.ts          # Route allowlist & upload size validations
-│   │   ├── security.ts           # CSP, navigation locks & external link safety
+│   │   ├── security.ts           # Navigation locks & external link safety
 │   │   └── preload.ts            # Typed window.aiStudyAssistant IPC bridge
 │   ├── src/                      # React renderer source
 │   │   ├── components/           # Reusable UI, layout & document components
 │   │   ├── hooks/                # Theme and responsive utility hooks
 │   │   ├── lib/                  # API client, error handlers & i18n dictionaries (en/ar)
-│   │   ├── pages/                # Dashboard, Projects, Documents, Search, Chat, Settings
+│   │   ├── pages/                # Dashboard, Projects, Documents, Search, Chat, Setup, Settings
 │   │   └── stores/               # Zustand state stores
 │   ├── scripts/                  # Build scripts & PyInstaller spec (backend.spec)
 │   ├── tests/                    # Vitest unit and integration test suites
@@ -194,17 +197,55 @@ AI-Study-Assistant/
 
 Before setting up the project, ensure you have the following installed:
 
-- **Python**: Version `3.11` or `3.12` (Python 3.12 recommended)
-- **Node.js**: Version `18.x` or higher and `npm`
+**Using the Windows installer (end users):**
+
+- **Windows 10/11 x64**
+- **Docker Desktop 4+** running with the WSL 2 backend (provides PostgreSQL + pgvector)
+- **One AI provider API key** (OpenAI by default)
+
+Python, Node.js, PostgreSQL, and pgvector are **not** required for the installed app.
+
+**Building from source:**
+
+- **Python**: Version `3.12.x` for the backend and packaged executable
+- **Node.js**: Version `18.x` or higher and `npm` (Node 22 recommended)
 - **PostgreSQL**: Version `15+` with the `pgvector` extension enabled (or [Docker Desktop](https://www.docker.com/))
 - **AI Provider API Key**: At least one API key from:
+  - [OpenAI](https://platform.openai.com/) (`OPENAI_API_KEY`, default for generation and embeddings)
   - [Cohere](https://cohere.com/) (`COHERE_API_KEY`)
-  - [OpenAI](https://platform.openai.com/) (`OPENAI_API_KEY`)
   - [Google Gemini](https://ai.google.dev/) (`GEMINI_API_KEY`)
 
 ---
 
 ## Installation & Setup
+
+### Windows Installer (Recommended for Users)
+
+The packaged Windows app bundles the React renderer, Electron shell, and a
+self-contained PyInstaller backend. No Python or Node.js installation is
+required.
+
+1. Download `AI-Study-Assistant Setup 1.0.0.exe` and `SHA256SUMS.txt` from
+   [GitHub Releases](https://github.com/YousefOsama20/AI-Study-Assistant/releases)
+   and verify the SHA-256 hash.
+2. Install and launch the app (the current beta is unsigned; SmartScreen may
+   warn).
+3. Start **Docker Desktop**.
+4. Complete the first-run wizard:
+   - **Database** — start the bundled PostgreSQL + pgvector container, or enter
+     an existing PostgreSQL server; then test and initialize.
+   - **AI providers** — OpenAI is the default for answers and embeddings, so one
+     API key is enough. Cohere and Gemini are optional.
+   - **Finish** — saves configuration to `%APPDATA%\AI-Study-Assistant`,
+     restarts the backend, and opens the dashboard.
+
+See [WINDOWS_INSTALL.md](WINDOWS_INSTALL.md) for the complete end-user guide,
+security notes, backup, and troubleshooting.
+
+> [!NOTE]
+> The installer is currently a **limited beta**: Docker Desktop remains a
+> prerequisite for the bundled database, and release binaries are not yet
+> code-signed.
 
 ### 1. Clone the Repository
 
@@ -253,17 +294,17 @@ POSTGRES_MAIN_DATABASE="ai_study_assistant"
 
 # AI Provider Backends (Providers can be mixed freely)
 GENERATION_BACKEND="OPENAI"
-EMBEDDING_BACKEND="COHERE"
+EMBEDDING_BACKEND="OPENAI"
 
 # Provider API Keys (leave unused providers empty)
 OPENAI_API_KEY="sk-..."
-COHERE_API_KEY="your-cohere-key"
+COHERE_API_KEY=""
 GEMINI_API_KEY=""
 
 # Model Configuration
 GENERATION_MODEL_ID="gpt-4o-mini"
-EMBEDDING_MODEL_ID="embed-multilingual-light-v3.0"
-EMBEDDING_MODEL_SIZE=384
+EMBEDDING_MODEL_ID="text-embedding-3-small"
+EMBEDDING_MODEL_SIZE=1536
 
 # Vector DB Backend
 VECTOR_DB_BACKEND="PGVECTOR"
@@ -334,18 +375,24 @@ If you prefer developing the React web interface inside your standard browser:
 
 ### Windows Installer Packaging
 
-To compile a standalone Windows `.exe` installer (bundling the PyInstaller one-file backend executable and Electron NSIS packaging):
+To compile a standalone Windows `.exe` installer (bundling the PyInstaller
+one-file backend executable and Electron NSIS packaging):
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File frontend\scripts\build-installer.ps1
 ```
 
-The output installer is generated at:
+The script creates an isolated Python 3.12 build environment, smoke-tests the
+frozen backend, runs type checks and tests, packages the installer, and writes
+checksums. The output is generated at:
+
 ```
 frontend\dist\AI-Study-Assistant Setup 1.0.0.exe
+frontend\dist\SHA256SUMS.txt
 ```
 
-For advanced Windows packaging details and `%APPDATA%` configuration instructions, see [WINDOWS_INSTALL.md](WINDOWS_INSTALL.md).
+`npm run dist:win` runs the same pipeline. For advanced Windows packaging and
+`%APPDATA%` configuration instructions, see [WINDOWS_INSTALL.md](WINDOWS_INSTALL.md).
 
 ---
 
@@ -420,10 +467,10 @@ Key variables configurable in `src/.env` (and `%APPDATA%\AI-Study-Assistant\.env
 | `POSTGRES_PASSWORD` | - | Database password |
 | `POSTGRES_MAIN_DATABASE` | `ai_study_assistant` | Application database name |
 | `GENERATION_BACKEND` | `OPENAI` | Generation provider (`OPENAI`, `COHERE`, `GEMINI`) |
-| `EMBEDDING_BACKEND` | `COHERE` | Embedding provider (`COHERE`, `OPENAI`, `GEMINI`) |
+| `EMBEDDING_BACKEND` | `OPENAI` | Embedding provider (`OPENAI`, `COHERE`, `GEMINI`) |
 | `GENERATION_MODEL_ID` | `gpt-4o-mini` | Generation model identifier |
-| `EMBEDDING_MODEL_ID` | `embed-multilingual-light-v3.0` | Embedding model identifier |
-| `EMBEDDING_MODEL_SIZE` | `384` | Embedding vector dimensions (must match model) |
+| `EMBEDDING_MODEL_ID` | `text-embedding-3-small` | Embedding model identifier |
+| `EMBEDDING_MODEL_SIZE` | `1536` | Embedding vector dimensions (must match model) |
 | `VECTOR_DB_BACKEND` | `PGVECTOR` | Vector database engine (`PGVECTOR`, `QDRANT`) |
 | `FILE_MAX_SIZE` | `10` | Maximum file upload size in MB |
 | `CHUNK_SIZE_DEFAULT` | `1000` | Text chunk character size |
@@ -437,15 +484,15 @@ Key variables configurable in `src/.env` (and `%APPDATA%\AI-Study-Assistant\.env
 ## Testing & Quality Assurance
 
 ### Frontend Test Suite
-The frontend utilizes [Vitest](https://vitest.dev/) and `@testing-library/react`. 11 test suites verify state stores, navigation, upload validation, security policies, and IPC error handling:
+The frontend utilizes [Vitest](https://vitest.dev/) and `@testing-library/react`. 12 test suites verify state stores, navigation, upload validation, security policies, setup configuration, and IPC error handling:
 
 ```bash
 cd frontend
 npm test
 ```
 ```
-Test Files  11 passed (11)
-     Tests  86 passed (86)
+Test Files  12 passed (12)
+     Tests  94 passed (94)
 ```
 
 ### Static Typechecking
@@ -466,9 +513,10 @@ python -m compileall -q src
 ## Security & Privacy
 
 - **Local Document Storage**: Uploaded PDFs and extracted chunk data remain on your local storage (`src/assets/` or `%APPDATA%\AI-Study-Assistant\data`). Files are never transmitted to unauthorized third parties.
-- **Strict Process Sandboxing**: The Electron renderer runs with `contextIsolation: true`, `nodeIntegration: false`, and `sandbox: true`. Arbitrary navigation and new window popups are denied.
-- **Port Masking**: In packaged mode, the backend binds strictly to `127.0.0.1` on a dynamically assigned port. The renderer communicates solely through typed IPC invocations.
-- **Credential Hygiene**: Sensitive API keys and database credentials belong exclusively in `.env` files, which are strictly gitignored and excluded from packaged builds.
+- **Strict Process Sandboxing**: The Electron renderer runs with `contextIsolation: true`, `nodeIntegration: false`, and `sandbox: true`. Arbitrary navigation, file-URL escapes, permissions, and new window popups are denied.
+- **Per-Launch API Token**: The Electron main process generates a random bearer token for every launch and passes it only to the bundled backend. The renderer never receives the token or the backend port; all API calls go through an allowlisted IPC bridge.
+- **Secret Isolation**: In the installed app, API keys and the database password are stored in `%APPDATA%\AI-Study-Assistant\.env` and passed to the backend as environment variables. They never enter the renderer, installer, logs, or repository. Backend logs redact known secret values and rotate at 5 MB.
+- **Local-Only Backend**: The packaged backend binds strictly to `127.0.0.1` on a dynamically assigned port and requires the per-launch token for every request.
 
 ---
 

@@ -6,6 +6,7 @@ Build from the frontend directory with:
     python -m PyInstaller --noconfirm --clean ^
       --distpath build/backend --workpath build/pyinstaller scripts/backend.spec
 """
+import sys
 from pathlib import Path
 
 from PyInstaller.utils.hooks import collect_submodules
@@ -13,6 +14,11 @@ from PyInstaller.utils.hooks import collect_submodules
 FRONTEND = Path(SPECPATH).resolve().parent
 REPO = FRONTEND.parent
 SRC = REPO / "src"
+MINIRAG = SRC / "models" / "db_schemes" / "minirag"
+
+for path in (SRC, MINIRAG):
+    if str(path) not in sys.path:
+        sys.path.insert(0, str(path))
 
 hiddenimports = [
     "uvicorn.logging",
@@ -31,13 +37,19 @@ hiddenimports = [
     "sqlalchemy.dialects.postgresql.psycopg2",
     "stores.llm.templates.locales.en.rag",
     "stores.llm.templates.locales.ar.rag",
+    # Alembic's env.py imports the schema package as a top-level ``schemes``
+    # because it runs from the minirag directory.
+    "schemes",
+    "schemes.minirag_base",
+    "schemes.project",
+    "schemes.asset",
+    "schemes.datachunk",
 ]
 for package in (
     "uvicorn",
     "stores",
     "controllers",
     "routes",
-    "models",
     "helpers",
     "alembic",
 ):
@@ -45,12 +57,12 @@ for package in (
 
 datas = [
     (
-        str(SRC / "models" / "db_schemes" / "ai_study_assistant" / "alembic"),
-        "models/db_schemes/ai_study_assistant/alembic",
+        str(MINIRAG / "alembic"),
+        "models/db_schemes/minirag/alembic",
     ),
     (
-        str(SRC / "models" / "db_schemes" / "ai_study_assistant" / "alembic.ini"),
-        "models/db_schemes/ai_study_assistant",
+        str(MINIRAG / "alembic.ini"),
+        "models/db_schemes/minirag",
     ),
     # TemplateParser checks the locale directory on disk before importing,
     # so the locale packages must exist outside the PYZ archive.
@@ -62,7 +74,7 @@ datas = [
 
 a = Analysis(
     [str(SRC / "main.py")],
-    pathex=[str(SRC)],
+    pathex=[str(SRC), str(MINIRAG)],
     binaries=[],
     datas=datas,
     hiddenimports=hiddenimports,

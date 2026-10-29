@@ -5,6 +5,15 @@ import http from 'http'
 import os from 'os'
 import path from 'path'
 import { BackendManager } from './backend-manager'
+import {
+  ensureDockerPassword,
+  getSetupStatus,
+  readSetupConfig,
+  readSetupSecrets,
+  saveSetupConfig,
+  type SetupSaveInput,
+} from './setup-config'
+import { getDockerStatus, startDatabase } from './docker-manager'
 import { shouldDisableGpu } from './platform'
 import {
   ALLOWED_BINARY_PATTERNS,
@@ -29,6 +38,14 @@ const FRONTEND_ROOT = path.join(__dirname, '..', '..')
 const REPO_ROOT = path.join(FRONTEND_ROOT, '..')
 const DEV_SERVER_URL = process.env.VITE_DEV_SERVER_URL
 
+// Generated once per app launch and shared only with the backend child process
+// and the main-process HTTP calls below. It is never exposed to the renderer.
+const BACKEND_API_TOKEN = randomBytes(32).toString('hex')
+
+function authHeaders(): Record<string, string> {
+  return { Authorization: `Bearer ${BACKEND_API_TOKEN}` }
+}
+
 if (shouldDisableGpu()) {
   app.disableHardwareAcceleration()
 }
@@ -39,6 +56,27 @@ function requireBackendPort(manager: BackendManager): number {
     throw new Error('Backend is not running')
   }
   return port
+}
+
+const TEMP_FILE_MAX_AGE_MS = 24 * 60 * 60 * 1000
+
+function pruneOldTempFiles(dir: string): void {
+  try {
+    const cutoff = Date.now() - TEMP_FILE_MAX_AGE_MS
+    for (const entry of fs.readdirSync(dir)) {
+      const full = path.join(dir, entry)
+      try {
+        const stat = fs.statSync(full)
+        if (stat.isFile() && stat.mtimeMs < cutoff) {
+          fs.rmSync(full, { force: true })
+        }
+      } catch {
+        // A concurrently opened file may be locked; leave it for next launch.
+      }
+    }
+  } catch {
+    // Cleanup is best effort.
+  }
 }
 
 interface ApiRequestOptions {
@@ -142,6 +180,7 @@ function streamUploadRequest(options: {
         path: options.path,
         method: 'POST',
         headers: {
+          ...authHeaders(),
           'Content-Type': `multipart/form-data; boundary=${boundary}`,
           'Content-Length': body.length,
         },
@@ -215,7 +254,83 @@ function streamUploadRequest(options: {
   })
 }
 
-function registerIpcHandlers(manager: BackendManager): void {
+interface SetupContext {
+  userDataDir: string
+  resourcesPath: string
+  projectRoot: string
+}
+
+interface DatabaseInput {
+  host: string
+  port: number
+  database: string
+  username: string
+  password: string
+}
+
+function asRecord(raw: unknown): Record<string, unknown> {
+  return raw && typeof raw === 'object' && !Array.isArray(raw)
+    ? (raw as Record<string, unknown>)
+    : {}
+}
+
+function shortString(value: unknown, maxLength: number): string {
+  if (typeof value !== 'string') return ''
+  const trimmed = value.trim()
+  return trimmed.length <= maxLength ? trimmed : ''
+}
+
+function integerInRange(value: unknown, min: number, max: number, fallback: number): number {
+  const parsed = typeof value === 'number' ? value : Number.parseInt(String(value ?? ''), 10)
+  if (!Number.isInteger(parsed) || parsed < min || parsed > max) return fallback
+  return parsed
+}
+
+function databaseInput(
+  raw: unknown,
+  storedPassword: string | null,
+): DatabaseInput {
+  const input = asRecord(raw)
+  return {
+    host: shortString(input.host, 255) || '127.0.0.1',
+    port: integerInRange(input.port, 1, 65535, 5432),
+    database: shortString(input.database, 63) || 'ai_study_assistant',
+    username: shortString(input.username, 63) || 'postgres',
+    password:
+      typeof input.password === 'string' &&
+      input.password.length > 0 &&
+      input.password.length <= 1024
+        ? input.password
+        : (storedPassword ?? ''),
+  }
+}
+
+async function setupApiRequest(
+  manager: BackendManager,
+  path: string,
+  payload: unknown,
+  timeoutMs: number,
+): Promise<{ status: number; ok: boolean; json: unknown }> {
+  const port = requireBackendPort(manager)
+  const response = await fetch(`http://127.0.0.1:${port}${path}`, {
+    method: 'POST',
+    headers: {
+      ...authHeaders(),
+      Accept: 'application/json',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(payload),
+    redirect: 'error',
+    signal: AbortSignal.timeout(timeoutMs),
+  })
+  return {
+    status: response.status,
+    ok: response.ok,
+    json: await readJsonResponse(response),
+  }
+}
+
+function registerIpcHandlers(manager: BackendManager, setup: SetupContext): void {
   ipcMain.handle('aiStudyAssistant:api-request', async (_event, options: ApiRequestOptions) => {
     const method = typeof options?.method === 'string' ? options.method : ''
     const safePath = normalizePath(options?.path)
@@ -264,6 +379,7 @@ function registerIpcHandlers(manager: BackendManager): void {
       const response = await fetch(`http://127.0.0.1:${port}${safePath}`, {
         method,
         headers: {
+          ...authHeaders(),
           Accept: 'application/json',
           ...(body !== undefined
             ? { 'Content-Type': options.contentType ?? 'application/json' }
@@ -395,6 +511,7 @@ function registerIpcHandlers(manager: BackendManager): void {
       const port = requireBackendPort(manager)
       const response = await fetch(`http://127.0.0.1:${port}${safePath}`, {
         method: 'GET',
+        headers: authHeaders(),
         redirect: 'error',
         signal: AbortSignal.timeout(timeoutMs),
       })
@@ -439,6 +556,7 @@ function registerIpcHandlers(manager: BackendManager): void {
         const filePath = `/api/v1/projects/${projectId}/documents/${documentId}/file`
         const response = await fetch(`http://127.0.0.1:${port}${filePath}`, {
           method: 'GET',
+          headers: authHeaders(),
           redirect: 'error',
           signal: AbortSignal.timeout(API_TIMEOUT_DEFAULT_MS),
         })
@@ -447,9 +565,13 @@ function registerIpcHandlers(manager: BackendManager): void {
         }
         const buffer = Buffer.from(await response.arrayBuffer())
         const dir = path.join(os.tmpdir(), 'ai-study-assistant')
-        fs.mkdirSync(dir, { recursive: true })
-        const target = path.join(dir, `document-${documentId}.pdf`)
-        fs.writeFileSync(target, buffer)
+        fs.mkdirSync(dir, { recursive: true, mode: 0o700 })
+        pruneOldTempFiles(dir)
+        const target = path.join(
+          dir,
+          `document-${documentId}-${randomBytes(8).toString('hex')}.pdf`,
+        )
+        fs.writeFileSync(target, buffer, { mode: 0o600 })
         const openError = await shell.openPath(target)
         if (openError) {
           return { ok: false, error: openError }
@@ -463,18 +585,104 @@ function registerIpcHandlers(manager: BackendManager): void {
       }
     },
   )
+
+  ipcMain.handle('aiStudyAssistant:setup-get-status', () =>
+    getSetupStatus(setup.userDataDir),
+  )
+
+  ipcMain.handle(
+    'aiStudyAssistant:setup-save',
+    (_event, rawInput: unknown) => {
+      const input = asRecord(rawInput) as SetupSaveInput
+      return saveSetupConfig(setup.userDataDir, input)
+    },
+  )
+
+  ipcMain.handle('aiStudyAssistant:setup-docker-status', () =>
+    getDockerStatus({
+      resourcesPath: setup.resourcesPath,
+      projectRoot: setup.projectRoot,
+    }),
+  )
+
+  ipcMain.handle(
+    'aiStudyAssistant:setup-docker-start',
+    async (_event, rawInput: unknown) => {
+      const input = asRecord(rawInput)
+      const current = readSetupConfig(setup.userDataDir)
+      const database = {
+        ...current.config.database,
+        mode: 'docker' as const,
+        host: '127.0.0.1',
+        port: integerInRange(
+          input.port,
+          1,
+          65535,
+          current.config.database.port || 5400,
+        ),
+        name:
+          shortString(input.database, 63) ||
+          current.config.database.name,
+        username:
+          shortString(input.username, 63) ||
+          current.config.database.username,
+      }
+      saveSetupConfig(setup.userDataDir, {
+        config: { database },
+      })
+      const { password, generated } = ensureDockerPassword(setup.userDataDir)
+      const result = await startDatabase({
+        resourcesPath: setup.resourcesPath,
+        projectRoot: setup.projectRoot,
+        port: database.port,
+        database: database.name,
+        username: database.username,
+        password,
+      })
+      return { ...result, passwordGenerated: generated }
+    },
+  )
+
+  ipcMain.handle(
+    'aiStudyAssistant:setup-test-db',
+    async (_event, rawInput: unknown) => {
+      const secrets = readSetupSecrets(setup.userDataDir)
+      const payload = databaseInput(rawInput, secrets.databasePassword)
+      return setupApiRequest(manager, '/api/v1/setup/test-db', payload, 45_000)
+    },
+  )
+
+  ipcMain.handle(
+    'aiStudyAssistant:setup-init-db',
+    async (_event, rawInput: unknown) => {
+      const input = asRecord(rawInput)
+      const secrets = readSetupSecrets(setup.userDataDir)
+      const payload = {
+        ...databaseInput(input, secrets.databasePassword),
+        create_database: input.create_database !== false,
+        run_migrations: input.run_migrations !== false,
+      }
+      return setupApiRequest(manager, '/api/v1/setup/init-db', payload, 180_000)
+    },
+  )
+
+  ipcMain.handle('aiStudyAssistant:setup-open-logs', async () => {
+    const error = await shell.openPath(setup.userDataDir)
+    return { ok: error === '', error: error || null }
+  })
 }
 
 function hardenWindow(win: BrowserWindow, devUrl: string | undefined): void {
   win.webContents.setWindowOpenHandler(({ url }) => {
-    if (/^https?:\/\//i.test(url)) {
-      void shell.openExternal(url)
+    const safeUrl = isSafeExternalUrl(url)
+    if (safeUrl) {
+      void shell.openExternal(safeUrl)
     }
     return { action: 'deny' }
   })
 
   win.webContents.on('will-navigate', (event, url) => {
-    if (!isAllowedNavigation(url, devUrl)) {
+    if (!isAllowedNavigation(url, devUrl, path.join(FRONTEND_ROOT, 'build', 'renderer'))) {
       event.preventDefault()
     }
   })
@@ -531,14 +739,20 @@ async function main(): Promise<void> {
   session.defaultSession.setPermissionRequestHandler((_webContents, _permission, callback) => {
     callback(false)
   })
+  session.defaultSession.setPermissionCheckHandler(() => false)
 
   const manager = new BackendManager({
     userDataDir: app.getPath('userData'),
     packaged: app.isPackaged,
     resourcesPath: process.resourcesPath,
     projectRoot: REPO_ROOT,
+    apiToken: BACKEND_API_TOKEN,
   })
-  registerIpcHandlers(manager)
+  registerIpcHandlers(manager, {
+    userDataDir: app.getPath('userData'),
+    resourcesPath: process.resourcesPath,
+    projectRoot: REPO_ROOT,
+  })
 
   void manager.start().catch((error: unknown) => {
     // Status surface is the renderer banner; keep the message in the log/status only.

@@ -154,7 +154,17 @@ export interface IndexPushResponse {
 export interface HealthResponse {
   status: 'ok' | 'degraded'
   app: { name: string; version: string }
-  database: { configured: boolean; connected: boolean; error: string | null }
+  database: {
+    configured: boolean
+    connected: boolean
+    ready: boolean
+    error: string | null
+  }
+  migration: {
+    attempted: boolean
+    succeeded: boolean
+    error: string | null
+  }
   vectordb: { backend: string; connected: boolean; error: string | null }
   generation: { backend: string; model: string | null; configured: boolean }
   embedding: { backend: string; model: string | null; configured: boolean }

@@ -17,6 +17,8 @@ extraResources:
     to: backend
     filter:
       - "**/*"
+  - from: ../docker/docker-compose.yml
+    to: docker/docker-compose.yml
 
 asar: true
 compression: normal

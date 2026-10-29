@@ -4,6 +4,12 @@ import fs from 'fs'
 import http from 'http'
 import net from 'net'
 import path from 'path'
+import {
+  buildBackendEnv,
+  parseEnvFile,
+  readSetupConfig,
+  readSetupSecrets,
+} from './setup-config'
 
 export type BackendState = 'stopped' | 'starting' | 'running' | 'failed'
 
@@ -18,12 +24,17 @@ export interface BackendManagerOptions {
   packaged: boolean
   resourcesPath: string
   projectRoot: string
+  apiToken: string
 }
 
 const MAX_RESTART_ATTEMPTS = 3
 const STARTUP_TIMEOUT_MS = 60_000
 const HEALTH_POLL_INTERVAL_MS = 500
 const STOP_TIMEOUT_MS = 5_000
+const MAX_LOG_BYTES = 5 * 1024 * 1024
+
+const ENV_KEY_RE =
+  /^(POSTGRES_[A-Z0-9_]+|OPENAI_[A-Z0-9_]+|COHERE_[A-Z0-9_]+|GEMINI_[A-Z0-9_]+|GENERATION_[A-Z0-9_]+|EMBEDDING_[A-Z0-9_]+|VECTOR_[A-Z0-9_]+|FILE_[A-Z0-9_]+|PREVIEW_[A-Z0-9_]+|CHUNK_[A-Z0-9_]+|RAG_[A-Z0-9_]+|SUMMARY_[A-Z0-9_]+|AISTUDY_[A-Z0-9_]+|MINIRAG_[A-Z0-9_]+|MAX_PREVIEW_PAGES|PRIMARY_LANG|DEFAULT_LANG|INPUT_DAFAULT_MAX_CHARACTERS|CORS_ALLOW_ORIGINS)$/
 
 function findFreePort(): Promise<number> {
   return new Promise((resolve, reject) => {
@@ -42,28 +53,6 @@ function findFreePort(): Promise<number> {
   })
 }
 
-function parseEnvFile(content: string): Record<string, string> {
-  const result: Record<string, string> = {}
-  for (const rawLine of content.split(/\r?\n/)) {
-    const line = rawLine.trim()
-    if (!line || line.startsWith('#')) continue
-    const eq = line.indexOf('=')
-    if (eq <= 0) continue
-    const key = line.slice(0, eq).trim()
-    let value = line.slice(eq + 1).trim()
-    if (
-      (value.startsWith('"') && value.endsWith('"')) ||
-      (value.startsWith("'") && value.endsWith("'"))
-    ) {
-      value = value.slice(1, -1)
-    }
-    if (/^[A-Za-z_][A-Za-z0-9_]*$/.test(key)) {
-      result[key] = value
-    }
-  }
-  return result
-}
-
 function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
@@ -73,6 +62,11 @@ const ALLOWED_CONFIG_KEYS = new Set([
   'RELOAD',
   'AISTUDY_AUTO_MIGRATE',
   'AISTUDY_DATA_DIR',
+  'AISTUDY_DATABASE_TRUST',
+  'POSTGRES_HOST',
+  'POSTGRES_PORT',
+  'POSTGRES_MAIN_DATABASE',
+  'POSTGRES_USERNAME',
   'CORS_ALLOW_ORIGINS',
   'FILE_MAX_SIZE',
   'FILE_DEFAULT_CHUNK_SIZE',
@@ -131,6 +125,7 @@ export class BackendManager extends EventEmitter {
   private logStream: fs.WriteStream | null = null
   private readonly options: BackendManagerOptions
   private readonly logPath: string
+  private redactValues: string[] = []
 
   constructor(options: BackendManagerOptions) {
     super()
@@ -155,18 +150,38 @@ export class BackendManager extends EventEmitter {
 
     try {
       fs.mkdirSync(this.options.userDataDir, { recursive: true })
+      this.rotateLog()
       this.logStream = fs.createWriteStream(this.logPath, { flags: 'a' })
       this.writeLog(
         `[${new Date().toISOString()}] starting backend (packaged=${this.options.packaged})`,
       )
 
+      const setup = readSetupConfig(this.options.userDataDir)
+      const secrets = readSetupSecrets(this.options.userDataDir)
+      this.redactValues = [
+        this.options.apiToken,
+        secrets.databasePassword ?? '',
+        secrets.openaiApiKey ?? '',
+        secrets.cohereApiKey ?? '',
+        secrets.geminiApiKey ?? '',
+      ].filter((value) => value.length >= 4)
+
+      const structured = setup.exists
+        ? buildBackendEnv(
+            setup.config,
+            secrets,
+            path.join(this.options.userDataDir, 'data'),
+            this.options.apiToken,
+          )
+        : {}
       const fileSettings = {
         ...this.readFileConfig(),
         ...this.readFileEnv(),
       }
-      if (Object.keys(fileSettings).length > 0) {
+      const loadedKeys = [...Object.keys(fileSettings), ...Object.keys(structured)]
+      if (loadedKeys.length > 0) {
         this.writeLog(
-          `[${new Date().toISOString()}] loaded user configuration keys: ${Object.keys(fileSettings).sort().join(', ')}`,
+          `[${new Date().toISOString()}] loaded user configuration keys: ${[...new Set(loadedKeys)].sort().join(', ')}`,
         )
       }
       const configuredPort = Number.parseInt(fileSettings.PORT ?? '', 10)
@@ -175,18 +190,28 @@ export class BackendManager extends EventEmitter {
           ? configuredPort
           : await findFreePort()
 
+      const dataDir =
+        structured.AISTUDY_DATA_DIR ??
+        fileSettings.AISTUDY_DATA_DIR ??
+        (this.options.packaged
+          ? path.join(this.options.userDataDir, 'data')
+          : undefined)
+
       const { command, args, cwd } = this.resolveCommand()
       const env: NodeJS.ProcessEnv = {
         ...process.env,
         ...fileSettings,
+        ...structured,
         HOST: '127.0.0.1',
         PORT: String(port),
         RELOAD: '0',
         AISTUDY_PACKAGED: this.options.packaged ? '1' : '0',
-        AISTUDY_AUTO_MIGRATE: fileSettings.AISTUDY_AUTO_MIGRATE ?? '1',
-        AISTUDY_DATA_DIR:
-          fileSettings.AISTUDY_DATA_DIR ??
-          path.join(this.options.userDataDir, 'data'),
+        AISTUDY_AUTO_MIGRATE:
+          structured.AISTUDY_AUTO_MIGRATE ??
+          fileSettings.AISTUDY_AUTO_MIGRATE ??
+          '0',
+        AISTUDY_API_TOKEN: this.options.apiToken,
+        ...(dataDir ? { AISTUDY_DATA_DIR: dataDir } : {}),
       }
 
       this.writeLog(`[${new Date().toISOString()}] spawn ${command} ${args.join(' ')}`)
@@ -309,6 +334,7 @@ export class BackendManager extends EventEmitter {
             port,
             path: '/api/v1/health',
             timeout: 2_000,
+            headers: { Authorization: `Bearer ${this.options.apiToken}` },
           },
           (res) => {
             res.resume()
@@ -353,7 +379,12 @@ export class BackendManager extends EventEmitter {
     try {
       const envPath = path.join(this.options.userDataDir, '.env')
       if (!fs.existsSync(envPath)) return {}
-      return parseEnvFile(fs.readFileSync(envPath, 'utf8'))
+      const parsed = parseEnvFile(fs.readFileSync(envPath, 'utf8'))
+      const result: Record<string, string> = {}
+      for (const [key, value] of Object.entries(parsed)) {
+        if (ENV_KEY_RE.test(key)) result[key] = value
+      }
+      return result
     } catch {
       return {}
     }
@@ -381,13 +412,40 @@ export class BackendManager extends EventEmitter {
     this.child = null
   }
 
+  private rotateLog(): void {
+    try {
+      const stat = fs.statSync(this.logPath)
+      if (stat.size < MAX_LOG_BYTES) return
+      const previous = `${this.logPath}.1`
+      fs.rmSync(previous, { force: true })
+      fs.renameSync(this.logPath, previous)
+    } catch {
+      // Missing log file or a locked file: append rather than fail startup.
+    }
+  }
+
   private closeLog(): void {
     this.logStream?.end()
     this.logStream = null
   }
 
+  private redact(line: string): string {
+    let result = line
+    for (const secret of this.redactValues) {
+      result = result.split(secret).join('[redacted]')
+    }
+    return result
+      .replace(/Bearer\s+[A-Za-z0-9._~+/=-]+/gi, 'Bearer [redacted]')
+      .replace(/postgres(?:ql)?(?:\+[a-z0-9]+)?:\/\/\S+/gi, 'postgresql://[redacted]')
+      .replace(
+        /\b(OPENAI_API_KEY|COHERE_API_KEY|GEMINI_API_KEY|POSTGRES_PASSWORD|AISTUDY_API_TOKEN)=\S+/g,
+        '$1=[redacted]',
+      )
+  }
+
   private writeLog(line: string): void {
-    this.logStream?.write(line.endsWith('\n') ? line : `${line}\n`)
+    const safe = this.redact(line)
+    this.logStream?.write(safe.endsWith('\n') ? safe : `${safe}\n`)
   }
 
   private setStatus(status: BackendStatus): void {

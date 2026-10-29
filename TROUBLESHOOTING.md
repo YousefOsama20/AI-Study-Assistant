@@ -8,8 +8,8 @@ curl http://localhost:5000/api/v1/health
 curl http://localhost:5000/api/v1/system/info
 
 # PostgreSQL (Docker compose service uses host port 5400)
-docker ps
-docker logs pgvector --tail 100
+docker ps --filter "name=pgvector"
+docker logs ai-study-assistant-pgvector-1 --tail 100
 
 # Packaged app logs (Windows)
 Get-Content "$env:APPDATA\AI-Study-Assistant\backend.log" -Tail 100
@@ -19,7 +19,7 @@ Get-Content "$env:APPDATA\AI-Study-Assistant\backend.log" -Tail 100
 |-------|----------|
 | `GET /api/v1/health` | `200` and `"status": "ok"` |
 | `/api/v1/health` degraded | `503` with `database.connected` or `vectordb.connected` false |
-| `GET /api/v1/` | `{"message":"AI-Study-Assistant","version":"0.1"}` |
+| `GET /api/v1/` | `{"message":"AI-Study-Assistant","version":"1.0.0"}` |
 | `GET /docs` | Swagger UI loads |
 
 ## Backend Startup
@@ -43,8 +43,8 @@ cd src
 python -c "from helpers.config import get_settings; s=get_settings(); print(s.POSTGRES_HOST, s.POSTGRES_PORT, s.POSTGRES_MAIN_DATABASE)"
 
 # Docker PostgreSQL is exposed on port 5400 by docker/docker-compose.yml
-docker ps | grep pgvector
-docker exec -it pgvector pg_isready -U postgres
+docker ps --filter "name=pgvector"
+docker exec -it ai-study-assistant-pgvector-1 pg_isready -U postgres
 
 # If using the compose service, src/.env should contain:
 # POSTGRES_HOST=127.0.0.1
@@ -54,7 +54,7 @@ docker exec -it pgvector pg_isready -U postgres
 Create the database if it does not exist:
 
 ```bash
-docker exec -it pgvector psql -U postgres -c "CREATE DATABASE ai_study_assistant;"
+docker exec -it ai-study-assistant-pgvector-1 psql -U postgres -c "CREATE DATABASE ai_study_assistant;"
 ```
 
 ### pgvector extension missing
@@ -89,8 +89,10 @@ cd src
 python -c "from helpers.config import get_settings; s=get_settings(); print(s.GENERATION_BACKEND, s.EMBEDDING_BACKEND)"
 ```
 
-- Set the key for each selected backend. Combining OpenAI generation with
-  Cohere embeddings requires both `OPENAI_API_KEY` and `COHERE_API_KEY`.
+- Set the key for each selected backend. The default configuration uses OpenAI
+  for both generation and embeddings, so one `OPENAI_API_KEY` is enough.
+  If you intentionally mix providers, set a key for each one (for example
+  OpenAI generation plus Cohere embeddings needs both keys).
 - `401`/`403` means the key is invalid or lacks access to the model.
 - `429` means quota or rate limiting; wait and retry or switch providers.
 - Keep `EMBEDDING_MODEL_SIZE` consistent with the embedding model.
@@ -263,21 +265,22 @@ bridge. A permissive CORS policy is neither needed nor recommended.
 
 ### Port conflict
 
-The compose file maps PostgreSQL to host port `5400` and MongoDB to `27007`.
-Change the host side of the mapping if needed, then update `src/.env`.
+The compose file maps PostgreSQL to host port `5400`. Change the host side of
+the mapping (`AISTUDY_DB_PORT`) if needed, then update the database port in the
+setup wizard or `src/.env`.
 
 ### Data persistence
 
 ```bash
 # Backup
-docker exec pgvector pg_dump -U postgres ai_study_assistant > backup.sql
+docker exec ai-study-assistant-pgvector-1 pg_dump -U postgres ai_study_assistant > backup.sql
 
 # Restore
-docker exec -i pgvector psql -U postgres ai_study_assistant < backup.sql
+docker exec -i ai-study-assistant-pgvector-1 psql -U postgres ai_study_assistant < backup.sql
 
 # Volumes persist across restarts
-docker compose down     # keeps data
-docker compose down -v  # WARNING: deletes database volumes
+docker compose -p ai-study-assistant down     # keeps data
+docker compose -p ai-study-assistant down -v  # WARNING: deletes database volumes
 ```
 
 ### Out of memory

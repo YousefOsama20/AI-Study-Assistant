@@ -100,13 +100,33 @@ If you don't have a local PostgreSQL + pgvector instance installed:
 cd docker
 cp .env.example .env
 # Set POSTGRES_PASSWORD in docker/.env
-docker compose up -d pgvector
+docker compose up -d
 ```
-Create the database and enable the vector extension:
+The compose stack creates the `ai_study_assistant` database, enables pgvector,
+and health-checks itself. No manual `CREATE DATABASE` is required.
+
+Default host port is `5400`. Override with `AISTUDY_DB_PORT` in `docker/.env`.
+
+### Database Migrations
+
+Alembic migrations live under `src/models/db_schemes/minirag/alembic/`. To run
+migrations manually (from the repository root, with `src/.env` configured):
+
 ```bash
-docker exec -it pgvector psql -U postgres -c "CREATE DATABASE ai_study_assistant;"
-docker exec -it pgvector psql -U postgres -d ai_study_assistant -c "CREATE EXTENSION IF NOT EXISTS vector;"
+cd src
+python -m helpers.migrations upgrade head
 ```
+
+To check the current applied revision:
+
+```bash
+cd src
+python -c "from helpers.migrations import current_revision; print(current_revision())"
+```
+
+New schema changes must include an Alembic migration script. The committed
+`alembic.ini` contains no credentials — the database URL is resolved at runtime
+from application settings.
 
 ---
 
@@ -143,7 +163,21 @@ npm run build        # Production build verification
 ### Backend
 ```bash
 cd src
-python -m compileall -q .   # Syntax validation
+python -m compileall -q .                             # Syntax validation
+python -m unittest discover -s tests -p "test_*.py"   # Unit tests
+```
+
+### Windows Installer
+```powershell
+# Full build (backend + frontend + installer)
+powershell -ExecutionPolicy Bypass -File frontend/scripts/build-installer.ps1
+
+# Backend only
+powershell -ExecutionPolicy Bypass -File frontend/scripts/build-backend.ps1
+
+# Frontend only (renderer + electron main process)
+cd frontend
+npm run build && npm run build:electron
 ```
 
 ---

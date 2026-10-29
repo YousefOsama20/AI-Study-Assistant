@@ -298,6 +298,82 @@ export const en = {
   'settings.secretsNote': 'API keys never appear in the interface or logs.',
   'settings.configHint':
     'Non-secret backend settings can live in config.json; keep keys in .env in your user data folder. .env overrides config.json. Restart the backend after changing either file.',
+  'settings.setupWizard': 'Setup wizard',
+
+  'setup.title': 'Set up AI-Study-Assistant',
+  'setup.subtitle': 'Connect a database and choose your AI providers.',
+  'setup.progressLabel': 'Setup progress',
+  'setup.stepDatabase': 'Database',
+  'setup.stepProviders': 'AI providers',
+  'setup.stepFinish': 'Finish',
+  'setup.desktopOnlyTitle': 'Desktop setup',
+  'setup.desktopOnly':
+    'The setup wizard runs inside the desktop app, where it can manage Docker and store secrets securely.',
+  'setup.openLogs': 'Open logs',
+  'setup.footerNote':
+    'Configuration is stored in your Windows user profile. API keys are never shown again after saving.',
+  'setup.databaseTitle': 'Database',
+  'setup.databaseDescription':
+    'Use the bundled PostgreSQL + pgvector container, or connect to an existing PostgreSQL server with pgvector installed.',
+  'setup.modeDocker': 'Docker Desktop',
+  'setup.modeDockerHint':
+    'Recommended. Starts a local PostgreSQL container with pgvector; requires Docker Desktop.',
+  'setup.modeExisting': 'Existing PostgreSQL',
+  'setup.modeExistingHint':
+    'Use a PostgreSQL server you already run. pgvector and a database must exist or be creatable.',
+  'setup.dockerTitle': 'Docker database',
+  'setup.dockerHint': 'Check Docker Desktop, then start the database container.',
+  'setup.dockerNotRunning': 'Docker Desktop is not running.',
+  'setup.checkDocker': 'Check Docker',
+  'setup.startDatabase': 'Start database',
+  'setup.dockerDownload': 'Get Docker Desktop',
+  'setup.dockerRequiredNote':
+    'Docker Desktop is required for the bundled database. Install it, start it, then check again.',
+  'setup.existingSqlHint':
+    'Required on the server (run as a PostgreSQL superuser): CREATE DATABASE ai_study_assistant; then connect to it and run CREATE EXTENSION IF NOT EXISTS vector;',
+  'setup.host': 'Host',
+  'setup.port': 'Port',
+  'setup.databaseName': 'Database name',
+  'setup.username': 'User name',
+  'setup.password': 'Database password',
+  'setup.passwordKeep': 'Saved password — leave blank to keep it',
+  'setup.passwordDockerHint':
+    'Generated automatically when the container starts. Leave blank to use the saved password.',
+  'setup.passwordHint': 'Leave blank only if your PostgreSQL server allows trust authentication.',
+  'setup.testConnection': 'Test connection',
+  'setup.initialize': 'Initialize database',
+  'setup.dbConnected': 'Database connection succeeded',
+  'setup.dbFailed': 'Database connection failed',
+  'setup.vectorMissing':
+    'pgvector is not available on this server. Install the vector extension before continuing.',
+  'setup.dbInitDone': 'Database, pgvector extension, and schema are ready.',
+  'setup.providersTitle': 'AI providers',
+  'setup.providersDescription':
+    'OpenAI is the default for both answers and embeddings, so one API key is enough to start. Cohere and Gemini are also supported.',
+  'setup.generationProvider': 'Generation provider',
+  'setup.embeddingProvider': 'Embedding provider',
+  'setup.model': 'Generation model',
+  'setup.embeddingModel': 'Embedding model',
+  'setup.embeddingSize': 'Embedding size',
+  'setup.useSameProvider': 'Use the same provider for embeddings',
+  'setup.useSameProviderHint':
+    'Keeps one API key and one provider configuration. Turn this off to mix providers.',
+  'setup.embeddingInherited': 'Embeddings use {provider} · {model} · {size} dimensions.',
+  'setup.apiKey': 'API key',
+  'setup.apiKeySaved': 'Saved — leave blank to keep it',
+  'setup.apiKeyPlaceholder': 'Paste your API key',
+  'setup.baseUrl': 'API base URL (optional)',
+  'setup.baseUrlHint': 'Only change this for a compatible proxy or local mock server.',
+  'setup.reviewTitle': 'Review and finish',
+  'setup.reviewDescription':
+    'Saving writes your configuration, restarts the backend, and opens the app.',
+  'setup.finishHint':
+    'The database container keeps running after the app closes so your data stays available. Use Settings to reopen this wizard later.',
+  'setup.saving': 'Saving and restarting…',
+  'setup.saveFinish': 'Save and finish',
+  'setup.requiredKeys':
+    'Connect the database and provide an API key for every selected provider before finishing.',
+  'setup.restartFailed': 'The backend did not restart. Check the logs and try again.',
 
   'about.title': 'About',
   'about.version': 'Version {version}',

@@ -8,11 +8,9 @@ class BassController:
     def __init__(self):
         self.app_setting = get_settings()
 
-        data_dir = os.environ.get("MINIRAG_DATA_DIR", "").strip()
-        if data_dir:
-            self.base_dir = data_dir
-        else:
-            self.base_dir = os.path.dirname( os.path.dirname(__file__) )
+        # ``Settings.data_dir`` prefers AISTUDY_DATA_DIR, then the legacy
+        # MINIRAG_DATA_DIR, and falls back to a per-user directory when frozen.
+        self.base_dir = self.app_setting.data_dir
 
         self.files_dir = os.path.join(
             self.base_dir,

@@ -103,11 +103,18 @@ describe('preload bridge', () => {
         'fetchBinary',
         'getAppVersion',
         'getBackendStatus',
+        'getDockerStatus',
+        'getSetupStatus',
+        'initializeDatabase',
         'onBackendStatus',
         'onUploadProgress',
         'openExternal',
+        'openLogsFolder',
         'openOriginalPdf',
         'restartBackend',
+        'saveSetupConfig',
+        'startDockerDatabase',
+        'testDatabase',
         'uploadFiles',
       ].sort(),
     )
@@ -125,6 +132,13 @@ describe('preload bridge', () => {
       'aiStudyAssistant:restart-backend',
       'aiStudyAssistant:open-external',
       'aiStudyAssistant:open-original-pdf',
+      'aiStudyAssistant:setup-get-status',
+      'aiStudyAssistant:setup-save',
+      'aiStudyAssistant:setup-docker-status',
+      'aiStudyAssistant:setup-docker-start',
+      'aiStudyAssistant:setup-test-db',
+      'aiStudyAssistant:setup-init-db',
+      'aiStudyAssistant:setup-open-logs',
     ])
 
     await api.apiRequest({
@@ -246,6 +260,30 @@ describe('electron security rules', () => {
     expect(
       isAllowedNavigation('https://example.com', 'http://localhost:5173'),
     ).toBe(false)
+    expect(
+      isAllowedNavigation(
+        'http://localhost:5173.evil.example/',
+        'http://localhost:5173',
+      ),
+    ).toBe(false)
+  })
+
+  it('confines file navigation to the packaged renderer directory', () => {
+    const root = path.resolve('build', 'renderer')
+    expect(
+      isAllowedNavigation(pathToFileURL(path.join(root, 'index.html')).href, undefined, root),
+    ).toBe(true)
+    expect(
+      isAllowedNavigation(pathToFileURL(path.join(root, 'assets', 'logo.png')).href, undefined, root),
+    ).toBe(true)
+    expect(
+      isAllowedNavigation(
+        pathToFileURL(path.join(root, '..', 'electron', 'main.js')).href,
+        undefined,
+        root,
+      ),
+    ).toBe(false)
+    expect(isAllowedNavigation('file:///C:/Windows/System32/calc.exe', undefined, root)).toBe(false)
   })
 
   it('validates and normalizes API paths', () => {

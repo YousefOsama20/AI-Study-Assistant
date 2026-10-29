@@ -14,54 +14,75 @@ system_router = APIRouter(
 )
 
 
-def _has_value(value) -> bool:
-    if value is None:
+def _safe_name(exc: BaseException) -> str:
+    return exc.__class__.__name__ or "Error"
+
+
+def _database_configured(settings) -> bool:
+    if not settings.database_configured:
         return False
-    if isinstance(value, str):
-        return value.strip() != "" and value.strip().lower() not in ("dummy_key", "none", "null")
-    return True
+    if (settings.POSTGRES_PASSWORD or "").strip():
+        return True
+    return not settings.packaged
 
 
 @system_router.get("/health")
 async def health_check(request: Request):
-    """Health of the API, database, and provider configuration.
+    """Health of the API, database, migrations, and provider configuration.
 
     Never returns secrets — only booleans and public configuration names.
     """
     settings = get_settings()
 
-    db_status = {"configured": True, "connected": False, "error": None}
-    try:
-        async with request.app.db_engine.connect() as conn:
-            await conn.execute(text("SELECT 1"))
-        db_status["connected"] = True
-        db_status["error"] = None
-    except Exception as e:
-        db_status["connected"] = False
-        db_status["error"] = str(e.__class__.__name__)
+    db_status = {
+        "configured": _database_configured(settings),
+        "connected": False,
+        "ready": bool(getattr(request.app, "db_ready", False)),
+        "error": getattr(request.app, "db_error", None),
+    }
+    migration_status = dict(
+        getattr(
+            request.app,
+            "db_migration",
+            {"attempted": False, "succeeded": False, "error": None},
+        )
+    )
+
+    engine = getattr(request.app, "db_engine", None)
+    if engine is not None:
+        try:
+            async with engine.connect() as conn:
+                await conn.execute(text("SELECT 1"))
+            db_status["connected"] = True
+            db_status["error"] = None
+        except Exception as exc:
+            db_status["connected"] = False
+            db_status["error"] = _safe_name(exc)
 
     vector_status = {
         "backend": settings.VECTOR_DB_BACKEND,
         "connected": bool(getattr(request.app, "vectordb_ready", False)),
-        "error": None,
+        "error": getattr(request.app, "vectordb_error", None),
     }
 
     generation_status = {
         "backend": settings.GENERATION_BACKEND,
         "model": settings.GENERATION_MODEL_ID,
-        "configured": _has_value(settings.OPENAI_API_KEY)
-        or _has_value(settings.COHERE_API_KEY)
-        or _has_value(settings.GEMINI_API_KEY),
+        "configured": settings.generation_configured,
     }
     embedding_status = {
         "backend": settings.EMBEDDING_BACKEND,
         "model": settings.EMBEDDING_MODEL_ID,
-        "configured": _has_value(settings.OPENAI_API_KEY)
-        or _has_value(settings.COHERE_API_KEY)
-        or _has_value(settings.GEMINI_API_KEY),
+        "configured": settings.embedding_configured,
     }
 
-    healthy = db_status["connected"] and vector_status["connected"]
+    healthy = (
+        db_status["connected"]
+        and db_status["ready"]
+        and vector_status["connected"]
+        and generation_status["configured"]
+        and embedding_status["configured"]
+    )
 
     return JSONResponse(
         status_code=200 if healthy else 503,
@@ -72,6 +93,7 @@ async def health_check(request: Request):
                 "version": settings.APP_VERSION,
             },
             "database": db_status,
+            "migration": migration_status,
             "vectordb": vector_status,
             "generation": generation_status,
             "embedding": embedding_status,
